@@ -1,4 +1,4 @@
-# github.com/camelva/erzo v0.0.0-20200403131340-8c4df51b6c72
+# github.com/camelva/erzo v0.0.0-20200626180820-39252a0976d5
 github.com/camelva/erzo
 github.com/camelva/erzo/engine
 github.com/camelva/erzo/loaders
@@ -12,5 +12,5 @@ github.com/go-telegram-bot-api/telegram-bot-api
 github.com/kelseyhightower/envconfig
 # github.com/technoweenie/multipartstreamer v1.0.1
 github.com/technoweenie/multipartstreamer
-# gopkg.in/yaml.v2 v2.2.8
+# gopkg.in/yaml.v2 v2.3.0
 gopkg.in/yaml.v2

@@ -1,7 +1,6 @@
 package parsers
 
 import (
-	"fmt"
 	"net/url"
 	"regexp"
 	"sort"
@@ -9,24 +8,9 @@ import (
 )
 
 type Extractor interface {
+	Name() string
 	Extract(url.URL) (*ExtractorInfo, error)
 	Compatible(url.URL) bool
-}
-
-type ErrFormatNotSupported struct {
-	Format string
-}
-
-func (e ErrFormatNotSupported) Error() string {
-	return fmt.Sprintf("format %s not supported yet", e.Format)
-}
-
-type ErrCantContinue struct {
-	Reason string
-}
-
-func (e ErrCantContinue) Error() string {
-	return fmt.Sprintf("error %s interrupted process", e.Reason)
 }
 
 type Format struct {

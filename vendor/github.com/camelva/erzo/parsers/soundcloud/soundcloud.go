@@ -51,6 +51,7 @@ func init() {
 	clientIDBase := "psT32GLDMZ0TQKgfPkzrGIlco3PYA1kf"
 
 	IE = extractor{
+		name:       "SoundCloud",
 		urlPattern: `(?:(?:www\.)|(?:m\.)(?:w\.))?soundcloud\.com`,
 		apiURL:     "https://api.soundcloud.com/",
 		api2URL:    "https://api-v2.soundcloud.com/",
@@ -70,11 +71,16 @@ func init() {
 
 // Main struct with necessary info and methods
 type extractor struct {
+	name       string
 	urlPattern string
 	apiURL     string
 	api2URL    string
 	baseURL    string
 	clientID   string
+}
+
+func (ie extractor) Name() string {
+	return ie.name
 }
 
 func (ie extractor) Compatible(u url.URL) bool {
@@ -384,7 +390,7 @@ func updateToken() error {
 		}
 		IE.clientID = string(matches[1])
 		// just ignore error
-		ioutil.WriteFile(tokenFile, matches[1], 0644)
+		_ = ioutil.WriteFile(tokenFile, matches[1], 0644)
 		return nil
 	}
 	return fmt.Errorf("can't retrieve token")

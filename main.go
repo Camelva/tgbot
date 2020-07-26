@@ -125,7 +125,7 @@ func handleMessage(bot *tgbotapi.BotAPI, message *tgbotapi.Message) error {
 	}
 	defer deleteTempMessage(bot, message.Chat, tmpMessageID)
 
-	songFile, err := erzo.Get(message.Text, erzo.Truncate(true))
+	songFile, metadata, err := erzo.Get(message.Text, erzo.OptionTruncate(true))
 	if err != nil {
 		return err
 	}
@@ -141,6 +141,9 @@ func handleMessage(bot *tgbotapi.BotAPI, message *tgbotapi.Message) error {
 	_, _ = bot.Send(tgbotapi.NewChatAction(chatID, "upload_audio"))
 
 	audioMsg := tgbotapi.NewAudioUpload(chatID, songFile)
+	audioMsg.Title = metadata.Title
+	audioMsg.Performer = metadata.Artist
+	audioMsg.Duration = int(metadata.Duration)
 
 	// and only then send song file
 	if _, err := bot.Send(audioMsg); err != nil {

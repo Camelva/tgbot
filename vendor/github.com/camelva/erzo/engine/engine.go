@@ -12,10 +12,11 @@ import (
 	"path"
 	"regexp"
 	"strconv"
+	"time"
 )
 
-var _extractors []parsers.Extractor
-var _loaders []loaders.Loader
+var _extractors = map[string]parsers.Extractor{}
+var _loaders = map[string]loaders.Loader{}
 
 const (
 	_urlPattern = `((?:[a-z]{3,6}:\/\/)|(?:^|\s))` +
@@ -23,74 +24,41 @@ const (
 		`([\.\?\=\&\%\/\w\-]*\b)`
 )
 
-type ErrNotURL struct{}
-
-func (ErrNotURL) Error() string {
-	return "there is no valid url"
-}
-
-type ErrUndefined struct{}
-
-func (ErrUndefined) Error() string {
-	return "undefined error"
-}
-
-// parsers errors
-type ErrUnsupportedService struct {
-	Service string
-}
-
-func (e ErrUnsupportedService) Error() string {
-	return fmt.Sprintf("%s unsupported yet", e.Service)
-}
-
-type ErrUnsupportedType struct {
-	parsers.ErrFormatNotSupported
-}
-
-type ErrCantFetchInfo struct {
-	parsers.ErrCantContinue
-}
-
-// loaders errors
-type ErrUnsupportedProtocol struct {
-	Protocol string
-}
-
-func (ErrUnsupportedProtocol) Error() string {
-	return "current loaders don't work with this protocol"
-}
-
-type ErrDownloadingError struct {
-	Reason string
-}
-
-func (e ErrDownloadingError) Error() string {
-	return fmt.Sprintf("can't download this song: %s", e.Reason)
-}
-
 func AddExtractor(x parsers.Extractor) {
-	_extractors = append(_extractors, x)
+	name := x.Name()
+	_extractors[name] = x
+	//_extractors = append(_extractors, x)
 }
+func Extractors() map[string]parsers.Extractor {
+	return _extractors
+}
+
 func AddLoader(l loaders.Loader) {
-	_loaders = append(_loaders, l)
+	name := l.Name()
+	_loaders[name] = l
+	//_loaders = append(_loaders, l)
+}
+func Loaders() map[string]loaders.Loader {
+	return _loaders
 }
 
 type Engine struct {
-	extractors   []parsers.Extractor
-	loaders      []loaders.Loader
+	extractors   map[string]parsers.Extractor
+	loaders      map[string]loaders.Loader
 	outputFolder string
 }
 
 // New return new instance of Engine
 func New(out string, truncate bool) *Engine {
-	if (len(_extractors) < 1) || (len(_loaders) < 1) {
+	xtrs := Extractors()
+	ldrs := Loaders()
+	if (len(xtrs) < 1) || (len(ldrs) < 1) {
 		// we need at least 1 extractor and 1 loader for work
 		return nil
 	}
 	e := &Engine{
-		extractors:   _extractors,
-		loaders:      _loaders,
+		extractors:   xtrs,
+		loaders:      ldrs,
 		outputFolder: out,
 	}
 	if truncate {
@@ -99,9 +67,15 @@ func New(out string, truncate bool) *Engine {
 	return e
 }
 
+type SongMetadata struct {
+	Artist, Title, Album, Thumbnail string
+	Date                            time.Time
+	Duration                        float32
+}
+
 // Clean current e.OutputFolder directory
 func (e Engine) Clean() {
-	os.RemoveAll(e.outputFolder)
+	_ = os.RemoveAll(e.outputFolder)
 	return
 }
 
@@ -113,21 +87,21 @@ func (e Engine) Clean() {
 // ErrUnsupportedProtocol if there is no downloader for this format
 // ErrDownloadingError if fatal error occurred while downloading song
 // ErrUndefined any other errors
-func (e Engine) Process(s string) (string, error) {
-	u, ok := extractURL(s)
+func (e Engine) Process(s string) (string, SongMetadata, error) {
+	u, ok := ExtractURL(s)
 	if !ok {
-		return "", ErrNotURL{}
+		return "", SongMetadata{}, ErrNotURL{}
 	}
 	info, err := e.extractInfo(*u)
 	if err != nil {
-		return "", err
+		return "", SongMetadata{}, err
 	}
-	meta := createMetadata(info)
-	title, err := e.downloadSong(info, meta)
+	metadata, formattedMeta := createMetadata(info)
+	title, err := e.downloadSong(info, formattedMeta)
 	if err != nil {
-		return "", err
+		return "", SongMetadata{}, err
 	}
-	return title, nil
+	return title, metadata, nil
 }
 
 func (e Engine) extractInfo(u url.URL) (*parsers.ExtractorInfo, error) {
@@ -206,7 +180,16 @@ func (e Engine) downloadSong(info *parsers.ExtractorInfo, metadata []string) (st
 	return "", ErrUnsupportedProtocol{}
 }
 
-func createMetadata(info *parsers.ExtractorInfo) []string {
+func createMetadata(info *parsers.ExtractorInfo) (SongMetadata, []string) {
+	metaObj := SongMetadata{
+		Artist:    info.Uploader,
+		Title:     info.Title,
+		Album:     info.Title,
+		Thumbnail: info.Thumbnails["t500x500"].URL,
+		Date:      info.Timestamp,
+		Duration:  info.Duration,
+	}
+
 	metaMap := map[string]string{
 		"title":        info.Title,
 		"album":        info.Title,
@@ -221,7 +204,7 @@ func createMetadata(info *parsers.ExtractorInfo) []string {
 		line := fmt.Sprintf("%s=%s", key, value)
 		metadata = append(metadata, line)
 	}
-	return metadata
+	return metaObj, metadata
 }
 
 func makeFilePath(folder string, title string) string {
@@ -234,8 +217,8 @@ func makeFilePath(folder string, title string) string {
 	return outPath
 }
 
-// extractURL trying to extract url from message
-func extractURL(message string) (u *url.URL, ok bool) {
+// ExtractURL trying to extract url from message
+func ExtractURL(message string) (u *url.URL, ok bool) {
 	re := regexp.MustCompile(_urlPattern)
 	rawURL := re.FindString(message)
 	if len(rawURL) < 1 {
