@@ -83,9 +83,7 @@ func handleError(bot *tgbotapi.BotAPI, msg *tgbotapi.Message, err error, dbMsgID
 		errCode = 99
 	}
 	if err != nil && err.Error() == "Request Entity Too Large" {
-		responseMsg = "Looks like this song weighs too much.\n" +
-			"Telegram limits uploading files size to 50mb and we can't avoid this limit.\n" +
-			"Please try another one"
+		responseMsg = BotPhrase.ErrTooLarge()
 		errCode = 19
 	}
 
@@ -125,7 +123,7 @@ func handleMessage(bot *tgbotapi.BotAPI, message *tgbotapi.Message) error {
 	}
 	defer deleteTempMessage(bot, message.Chat, tmpMessageID)
 
-	songFile, metadata, err := erzo.Get(message.Text, erzo.OptionTruncate(true))
+	songInfo, err := erzo.Get(message.Text, erzo.OptionTruncate(true))
 	if err != nil {
 		return err
 	}
@@ -140,10 +138,11 @@ func handleMessage(bot *tgbotapi.BotAPI, message *tgbotapi.Message) error {
 	// but we don't care about possible errors
 	_, _ = bot.Send(tgbotapi.NewChatAction(chatID, "upload_audio"))
 
-	audioMsg := tgbotapi.NewAudioUpload(chatID, songFile)
-	audioMsg.Title = metadata.Title
-	audioMsg.Performer = metadata.Artist
-	audioMsg.Duration = int(metadata.Duration)
+	audioMsg := tgbotapi.NewAudioUpload(chatID, songInfo.Path)
+	audioMsg.Title = songInfo.Title
+	audioMsg.Performer = songInfo.Author
+	audioMsg.Duration = int(songInfo.Duration)
+	audioMsg.ReplyToMessageID = message.MessageID
 
 	// and only then send song file
 	if _, err := bot.Send(audioMsg); err != nil {

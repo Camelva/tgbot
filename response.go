@@ -42,6 +42,7 @@ type responseContainer interface {
 	ErrUnsupportedFormat() string
 	ErrUnsupportedService() string
 	ErrUnavailableSong() string
+	ErrTooLarge() string
 }
 
 type languages map[string]responseContainer

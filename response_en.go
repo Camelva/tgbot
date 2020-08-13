@@ -15,7 +15,8 @@ func (PhraseEN) CmdHelp() string {
 		"If error still persist - contact with developer (link in description)\n" +
 		"\n===========================================\n" +
 		"Currently supported services: \n" +
-		"= soundcloud.com [only direct song urls yet]"
+		"🎵[soundcloud.com] - only direct song links yet\n" +
+		"🎵[youtube.com] - only direct song links yet\n"
 }
 func (PhraseEN) CmdUnknown() string {
 	return "I don't know that command. " +
@@ -50,4 +51,9 @@ func (PhraseEN) ErrUnsupportedService() string {
 func (PhraseEN) ErrUnavailableSong() string {
 	return "Can't load this song. Make sure it is available and try again.\n" +
 		"Otherwise, use /help for additional info"
+}
+func (PhraseEN) ErrTooLarge() string {
+	return "Looks like this song weighs too much.\n" +
+		"Telegram limits uploading files size to 50mb and we can't avoid this limit.\n" +
+		"Please try another one"
 }
