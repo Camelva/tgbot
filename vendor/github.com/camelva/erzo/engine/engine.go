@@ -24,6 +24,15 @@ const (
 		`([\.\?\=\&\%\/\w\-]*\b)`
 )
 
+type SongResult struct {
+	Path       string
+	Author     string
+	Title      string
+	Thumbnails map[string]parsers.Artwork
+	Duration   time.Duration
+	UploadDate time.Time
+}
+
 func AddExtractor(x parsers.Extractor) {
 	name := x.Name()
 	_extractors[name] = x
@@ -67,12 +76,6 @@ func New(out string, truncate bool) *Engine {
 	return e
 }
 
-type SongMetadata struct {
-	Artist, Title, Album, Thumbnail string
-	Date                            time.Time
-	Duration                        float32
-}
-
 // Clean current e.OutputFolder directory
 func (e Engine) Clean() {
 	_ = os.RemoveAll(e.outputFolder)
@@ -87,21 +90,28 @@ func (e Engine) Clean() {
 // ErrUnsupportedProtocol if there is no downloader for this format
 // ErrDownloadingError if fatal error occurred while downloading song
 // ErrUndefined any other errors
-func (e Engine) Process(s string) (string, SongMetadata, error) {
+func (e Engine) Process(s string) (*SongResult, error) {
 	u, ok := ExtractURL(s)
 	if !ok {
-		return "", SongMetadata{}, ErrNotURL{}
+		return nil, ErrNotURL{}
 	}
 	info, err := e.extractInfo(*u)
 	if err != nil {
-		return "", SongMetadata{}, err
+		return nil, err
 	}
-	metadata, formattedMeta := createMetadata(info)
-	title, err := e.downloadSong(info, formattedMeta)
+	meta := createMetadata(info)
+	filePath, err := e.downloadSong(info, meta)
 	if err != nil {
-		return "", SongMetadata{}, err
+		return nil, err
 	}
-	return title, metadata, nil
+	return &SongResult{
+		Path:       filePath,
+		Author:     info.Uploader,
+		Title:      info.Title,
+		Thumbnails: info.Thumbnails,
+		Duration:   info.Duration,
+		UploadDate: info.Timestamp,
+	}, nil
 }
 
 func (e Engine) extractInfo(u url.URL) (*parsers.ExtractorInfo, error) {
@@ -180,20 +190,11 @@ func (e Engine) downloadSong(info *parsers.ExtractorInfo, metadata []string) (st
 	return "", ErrUnsupportedProtocol{}
 }
 
-func createMetadata(info *parsers.ExtractorInfo) (SongMetadata, []string) {
-	metaObj := SongMetadata{
-		Artist:    info.Uploader,
-		Title:     info.Title,
-		Album:     info.Title,
-		Thumbnail: info.Thumbnails["t500x500"].URL,
-		Date:      info.Timestamp,
-		Duration:  info.Duration,
-	}
-
+func createMetadata(info *parsers.ExtractorInfo) []string {
 	metaMap := map[string]string{
-		"title":        info.Title,
-		"album":        info.Title,
-		"genre":        info.Genre,
+		"title": info.Title,
+		"album": info.Title,
+		//"genre":      info.Genre,
 		"artist":       info.Uploader,
 		"album_artist": info.Uploader,
 		"track":        strconv.Itoa(1),
@@ -204,7 +205,7 @@ func createMetadata(info *parsers.ExtractorInfo) (SongMetadata, []string) {
 		line := fmt.Sprintf("%s=%s", key, value)
 		metadata = append(metadata, line)
 	}
-	return metaObj, metadata
+	return metadata
 }
 
 func makeFilePath(folder string, title string) string {

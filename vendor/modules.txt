@@ -1,10 +1,11 @@
-# github.com/camelva/erzo v0.0.0-20200626180820-39252a0976d5
+# github.com/camelva/erzo v0.0.0-20200813160101-064dca65cbb6
 github.com/camelva/erzo
 github.com/camelva/erzo/engine
 github.com/camelva/erzo/loaders
 github.com/camelva/erzo/loaders/ffmpeg
 github.com/camelva/erzo/parsers
 github.com/camelva/erzo/parsers/soundcloud
+github.com/camelva/erzo/parsers/youtube
 github.com/camelva/erzo/utils
 # github.com/go-telegram-bot-api/telegram-bot-api v4.6.5-0.20190904012038-b33efeebc785+incompatible
 github.com/go-telegram-bot-api/telegram-bot-api

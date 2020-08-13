@@ -4,17 +4,8 @@ import (
 	"github.com/camelva/erzo/engine"
 	_ "github.com/camelva/erzo/loaders/ffmpeg"
 	_ "github.com/camelva/erzo/parsers/soundcloud"
-	"net/url"
+	_ "github.com/camelva/erzo/parsers/youtube"
 )
-
-type TidyURL struct {
-	URL     url.URL
-	Service string
-}
-
-type SongMetadata struct {
-	engine.SongMetadata
-}
 
 // Get process given url and download song from it.
 // @message - url to process
@@ -29,7 +20,7 @@ type SongMetadata struct {
 // ErrUnsupportedProtocol if there is no downloader for this format
 // ErrDownloadingError if fatal error occurred while downloading song
 // ErrUndefined any other errors
-func Get(message string, opts ...Option) (string, SongMetadata, error) {
+func Get(message string, opts ...Option) (*engine.SongResult, error) {
 	options := options{
 		output:   "out",
 		truncate: false,
@@ -41,12 +32,12 @@ func Get(message string, opts ...Option) (string, SongMetadata, error) {
 		options.output,
 		options.truncate,
 	)
-	r, meta, err := e.Process(message)
+	r, err := e.Process(message)
 	if err != nil {
 		convertedErr := convertErr(err)
-		return "", SongMetadata{}, convertedErr
+		return nil, convertedErr
 	}
-	return r, SongMetadata{SongMetadata: meta}, nil
+	return r, nil
 }
 
 func convertErr(err error) error {
@@ -70,28 +61,4 @@ func convertErr(err error) error {
 		convertedErr = ErrUndefined{engine.ErrUndefined{}}
 	}
 	return convertedErr
-}
-
-func CheckURL(msg string) (TidyURL, error) {
-	u, ok := engine.ExtractURL(msg)
-	if !ok {
-		return TidyURL{}, ErrNotURL{}
-	}
-	parsers := engine.Extractors()
-	var compatible string
-	for name, parser := range parsers {
-		if parser.Compatible(*u) {
-			compatible = name
-		}
-		continue
-	}
-	if compatible == "" {
-		return TidyURL{}, ErrUnsupportedService{
-			ErrUnsupportedService: engine.ErrUnsupportedService{Service: u.Host},
-		}
-	}
-	return TidyURL{
-		URL:     *u,
-		Service: compatible,
-	}, nil
 }

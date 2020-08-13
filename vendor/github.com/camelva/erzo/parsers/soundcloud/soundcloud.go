@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"time"
 
 	"github.com/camelva/erzo/engine"
 	"github.com/camelva/erzo/parsers"
@@ -206,28 +207,30 @@ func extractInfo(info *metadata2) (*parsers.ExtractorInfo, error) {
 		}
 	}
 
-	duration := float32(info.Duration) * 1 / 1000
+	//duration := float32(info.Duration) * 1 / 1000
+	duration, _ := time.ParseDuration(fmt.Sprintf("%dms", info.Duration))
+	duration = duration.Round(time.Second)
 
 	thumbnails := extractArtworks(info.ArtworkURL, info.User.AvatarURL)
 
 	var ExtractedInfo = &parsers.ExtractorInfo{
-		ID:        info.ID,
+		//ID:        info.ID,
 		Permalink: info.Permalink,
 		Uploader:  info.User.Username,
 		//UploaderID:   info.User.ID,
 		//UploaderURL:  info.User.PermalinkURL,
-		Timestamp:   info.CreatedAt,
-		Title:       info.Title,
-		Description: info.Description,
-		Thumbnails:  thumbnails,
-		Duration:    duration,
-		WebPageURL:  info.PermalinkURL,
+		Timestamp: time.Date(info.CreatedAt.Year(), info.CreatedAt.Month(), info.CreatedAt.Day(), 0, 0, 0, 0, time.UTC),
+		Title:     info.Title,
+		//Description: info.Description,
+		Thumbnails: thumbnails,
+		Duration:   duration,
+		//WebPageURL:  info.PermalinkURL,
 		//License:      info.License,
 		//ViewCount:    info.PlaybackCount,
 		//LikeCount:    info.LikesCount,
 		//CommentCount: info.CommentCount,
 		//RepostCount:  info.RepostsCount,
-		Genre:   info.Genre,
+		//Genre:   info.Genre,
 		Formats: formats,
 	}
 

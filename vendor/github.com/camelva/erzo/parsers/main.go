@@ -64,23 +64,23 @@ func (formats *Formats) Sort() {
 }
 
 type ExtractorInfo struct {
-	ID        int
+	//ID        int
 	Permalink string
 	Uploader  string
 	//UploaderID   int
 	//UploaderURL  string
-	Timestamp   time.Time
-	Title       string
-	Description string
-	Thumbnails  map[string]Artwork
-	Duration    float32
-	WebPageURL  string
+	Timestamp time.Time
+	Title     string
+	//Description string
+	Thumbnails map[string]Artwork
+	Duration   time.Duration
+	//WebPageURL  string
 	//License      string
 	//ViewCount    int
 	//LikeCount    int
 	//CommentCount int
 	//RepostCount  int
-	Genre   string
+	//Genre   string
 	Formats Formats
 }
 
