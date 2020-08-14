@@ -25,7 +25,7 @@ func (PhraseEN) CmdUnknown() string {
 
 // Process explaining
 func (PhraseEN) ProcessStart() string {
-	return "Please wait..."
+	return "Please wait, I'm trying to download your song..."
 }
 func (PhraseEN) ProcessUploading() string {
 	return "Everything done. Uploading song to you..."

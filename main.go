@@ -96,7 +96,7 @@ func handleError(bot *tgbotapi.BotAPI, msg *tgbotapi.Message, err error, dbMsgID
 		return
 	}
 
-	sendMessage(bot, msg.Chat.ID, responseMsg)
+	sendMessage(bot, msg, responseMsg, true)
 }
 
 func handleMessage(bot *tgbotapi.BotAPI, message *tgbotapi.Message) error {
@@ -115,21 +115,17 @@ func handleMessage(bot *tgbotapi.BotAPI, message *tgbotapi.Message) error {
 
 	if message.IsCommand() {
 		response := checkForCommands(message)
-		sendMessage(bot, chatID, response)
+		sendMessage(bot, message, response, true)
 		return nil
 	}
 
-	tmpMessageID = sendMessage(bot, chatID, BotPhrase.ProcessStart())
-	defer deleteTempMessage(bot, message.Chat, tmpMessageID)
-
-	//songInfo, err := erzo.Get(message.Text, erzo.OptionTruncate(true))
 	songInfo, err := erzo.GetInfo(message.Text, erzo.OptionTruncate(true))
 
 	if err != nil {
 		// if its not url - just ignore in groups but respond in private
 		if _, ok := err.(erzo.ErrNotURL); ok {
 			if isPrivateChat {
-				sendMessage(bot, chatID, BotPhrase.ErrNotURL())
+				sendMessage(bot, message, BotPhrase.ErrNotURL(), false)
 			}
 			return nil
 		}
@@ -137,9 +133,12 @@ func handleMessage(bot *tgbotapi.BotAPI, message *tgbotapi.Message) error {
 	}
 
 	if oversized(songInfo.URL) {
-		sendMessage(bot, chatID, BotPhrase.ErrTooLarge())
+		sendMessage(bot, message, BotPhrase.ErrTooLarge(), true)
 		return nil
 	}
+
+	tmpMessageID = sendMessage(bot, message, BotPhrase.ProcessStart(), true)
+	defer deleteMessage(bot, message.Chat, tmpMessageID)
 
 	songData, err := songInfo.Get()
 	if err != nil {
@@ -147,7 +146,7 @@ func handleMessage(bot *tgbotapi.BotAPI, message *tgbotapi.Message) error {
 	}
 	log.Println("Downloaded song. Uploading to user...")
 
-	tmpMessageID = sendMessage(bot, chatID, BotPhrase.ProcessUploading(), tmpMessageID)
+	tmpMessageID = editMessage(bot, message, BotPhrase.ProcessUploading())
 
 	// Inform user about uploading
 	_, _ = bot.Send(tgbotapi.NewChatAction(chatID, "upload_audio"))
@@ -180,18 +179,22 @@ func checkForCommands(message *tgbotapi.Message) (response string) {
 	}
 }
 
-func sendMessage(bot *tgbotapi.BotAPI, chatID int64, text string, oldMsgContainer ...int) (msgID int) {
-	var msgObj tgbotapi.Chattable
-	if oldMsgContainer != nil {
-		// Edit old message instead of creating new
-		oldMsgID := oldMsgContainer[0]
-		msgObj = tgbotapi.NewEditMessageText(chatID, oldMsgID, text)
-	} else {
-		msgObj = tgbotapi.NewMessage(chatID, text)
+func sendMessage(bot *tgbotapi.BotAPI, msgInfo *tgbotapi.Message, text string, reply bool) (messageID int) {
+	msgObj := tgbotapi.NewMessage(msgInfo.Chat.ID, text)
+	if reply {
+		msgObj.ReplyToMessageID = msgInfo.MessageID
 	}
-	// two tries
+	return send(bot, msgObj)
+}
+
+func editMessage(bot *tgbotapi.BotAPI, msgInfo *tgbotapi.Message, text string) (messageId int) {
+	msgObj := tgbotapi.NewEditMessageText(msgInfo.Chat.ID, msgInfo.MessageID, text)
+	return send(bot, msgObj)
+}
+
+func send(bot *tgbotapi.BotAPI, c tgbotapi.Chattable) (messageID int) {
 	for range make([]int, 2) {
-		sentMsg, err := bot.Send(msgObj)
+		sentMsg, err := bot.Send(c)
 		if err != nil {
 			continue
 		}
@@ -200,10 +203,7 @@ func sendMessage(bot *tgbotapi.BotAPI, chatID int64, text string, oldMsgContaine
 	return 0
 }
 
-func deleteTempMessage(bot *tgbotapi.BotAPI, chat *tgbotapi.Chat, messageID int) {
-	if chat.Type != "private" {
-		return
-	}
+func deleteMessage(bot *tgbotapi.BotAPI, chat *tgbotapi.Chat, messageID int) {
 	msgToDelete := tgbotapi.NewDeleteMessage(chat.ID, messageID)
 	if _, err := bot.DeleteMessage(msgToDelete); err != nil {
 		log.Printf("error while deleting temp message: %s", err)

@@ -40,7 +40,7 @@ func (PhraseRU) CmdUnknown() string {
 // Process explaining
 func (PhraseRU) ProcessStart() string {
 	// "Please wait..."
-	return "Подожди. Я работаю 🌪"
+	return "Подожди, пытаюсь скачать эту песню 🌪"
 }
 func (PhraseRU) ProcessUploading() string {
 	// "Everything done. Uploading song to you..."
