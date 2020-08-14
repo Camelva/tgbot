@@ -154,7 +154,7 @@ func handleMessage(bot *tgbotapi.BotAPI, message *tgbotapi.Message) error {
 	audioMsg := tgbotapi.NewAudioUpload(chatID, songData.Path)
 	audioMsg.Title = songData.Title
 	audioMsg.Performer = songData.Author
-	audioMsg.Duration = int(songData.Duration)
+	audioMsg.Duration = int(songData.Duration.Seconds())
 	audioMsg.ReplyToMessageID = message.MessageID
 
 	// and only then send song file
