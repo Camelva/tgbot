@@ -33,6 +33,14 @@ type SongResult struct {
 	UploadDate time.Time
 }
 
+type SongInfo struct {
+	Info     *parsers.ExtractorInfo
+	Metadata []string
+	URL      string
+
+	engine *Engine
+}
+
 func AddExtractor(x parsers.Extractor) {
 	name := x.Name()
 	_extractors[name] = x
@@ -91,6 +99,14 @@ func (e Engine) Clean() {
 // ErrDownloadingError if fatal error occurred while downloading song
 // ErrUndefined any other errors
 func (e Engine) Process(s string) (*SongResult, error) {
+	song, err := e.GetInfo(s)
+	if err != nil {
+		return nil, err
+	}
+	return song.Get()
+}
+
+func (e Engine) GetInfo(s string) (*SongInfo, error) {
 	u, ok := ExtractURL(s)
 	if !ok {
 		return nil, ErrNotURL{}
@@ -99,18 +115,26 @@ func (e Engine) Process(s string) (*SongResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	meta := createMetadata(info)
-	filePath, err := e.downloadSong(info, meta)
+	return &SongInfo{
+		Info:   info,
+		URL:    info.Formats[0].Url,
+		engine: &e,
+	}, nil
+}
+
+func (s *SongInfo) Get() (*SongResult, error) {
+	s.Metadata = createMetadata(s.Info)
+	filePath, err := s.engine.downloadSong(s.Info, s.Metadata)
 	if err != nil {
 		return nil, err
 	}
 	return &SongResult{
 		Path:       filePath,
-		Author:     info.Uploader,
-		Title:      info.Title,
-		Thumbnails: info.Thumbnails,
-		Duration:   info.Duration,
-		UploadDate: info.Timestamp,
+		Author:     s.Info.Uploader,
+		Title:      s.Info.Title,
+		Thumbnails: s.Info.Thumbnails,
+		Duration:   s.Info.Duration,
+		UploadDate: s.Info.Timestamp,
 	}, nil
 }
 

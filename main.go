@@ -1,10 +1,11 @@
 package main
 
 import (
-	"log"
-
 	"github.com/camelva/erzo"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
+	"log"
+	"net/http"
+	"strconv"
 )
 
 var BotPhrase = Responses.Get("en")
@@ -118,30 +119,43 @@ func handleMessage(bot *tgbotapi.BotAPI, message *tgbotapi.Message) error {
 		return nil
 	}
 
-	if isPrivateChat {
-		tmpMessageID = sendMessage(bot, chatID, BotPhrase.ProcessStart())
-	}
+	tmpMessageID = sendMessage(bot, chatID, BotPhrase.ProcessStart())
 	defer deleteTempMessage(bot, message.Chat, tmpMessageID)
 
-	songInfo, err := erzo.Get(message.Text, erzo.OptionTruncate(true))
+	//songInfo, err := erzo.Get(message.Text, erzo.OptionTruncate(true))
+	songInfo, err := erzo.GetInfo(message.Text, erzo.OptionTruncate(true))
+
+	if err != nil {
+		// if its not url - just ignore in groups but respond in private
+		if _, ok := err.(erzo.ErrNotURL); ok {
+			if isPrivateChat {
+				sendMessage(bot, chatID, BotPhrase.ErrNotURL())
+			}
+			return nil
+		}
+		return err
+	}
+
+	if oversized(songInfo.URL) {
+		sendMessage(bot, chatID, BotPhrase.ErrTooLarge())
+		return nil
+	}
+
+	songData, err := songInfo.Get()
 	if err != nil {
 		return err
 	}
 	log.Println("Downloaded song. Uploading to user...")
 
-	if isPrivateChat {
-		// update old temp message
-		tmpMessageID = sendMessage(bot, chatID, BotPhrase.ProcessUploading(), tmpMessageID)
-	}
+	tmpMessageID = sendMessage(bot, chatID, BotPhrase.ProcessUploading(), tmpMessageID)
 
 	// Inform user about uploading
-	// but we don't care about possible errors
 	_, _ = bot.Send(tgbotapi.NewChatAction(chatID, "upload_audio"))
 
-	audioMsg := tgbotapi.NewAudioUpload(chatID, songInfo.Path)
-	audioMsg.Title = songInfo.Title
-	audioMsg.Performer = songInfo.Author
-	audioMsg.Duration = int(songInfo.Duration)
+	audioMsg := tgbotapi.NewAudioUpload(chatID, songData.Path)
+	audioMsg.Title = songData.Title
+	audioMsg.Performer = songData.Author
+	audioMsg.Duration = int(songData.Duration)
 	audioMsg.ReplyToMessageID = message.MessageID
 
 	// and only then send song file
@@ -194,4 +208,21 @@ func deleteTempMessage(bot *tgbotapi.BotAPI, chat *tgbotapi.Chat, messageID int)
 	if _, err := bot.DeleteMessage(msgToDelete); err != nil {
 		log.Printf("error while deleting temp message: %s", err)
 	}
+}
+
+func oversized(s string) bool {
+	resp, err := http.Get(s)
+	if err != nil {
+		return true
+	}
+	_ = resp.Body.Close()
+	sizeBytes, err := strconv.Atoi(resp.Header.Get("Content-Length"))
+	if err != nil {
+		return true
+	}
+	sizeMB := sizeBytes / 1024 / 1024
+	if sizeMB > 49 {
+		return true
+	}
+	return false
 }

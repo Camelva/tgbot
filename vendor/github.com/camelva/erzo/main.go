@@ -21,6 +21,18 @@ import (
 // ErrDownloadingError if fatal error occurred while downloading song
 // ErrUndefined any other errors
 func Get(message string, opts ...Option) (*engine.SongResult, error) {
+	song, err := GetInfo(message, opts...)
+	if err != nil {
+		return nil, err
+	}
+	songRes, err := song.Get()
+	if err != nil {
+		return nil, convertErr(err)
+	}
+	return songRes, nil
+}
+
+func GetInfo(message string, opts ...Option) (*engine.SongInfo, error) {
 	options := options{
 		output:   "out",
 		truncate: false,
@@ -32,12 +44,11 @@ func Get(message string, opts ...Option) (*engine.SongResult, error) {
 		options.output,
 		options.truncate,
 	)
-	r, err := e.Process(message)
+	song, err := e.GetInfo(message)
 	if err != nil {
-		convertedErr := convertErr(err)
-		return nil, convertedErr
+		return nil, convertErr(err)
 	}
-	return r, nil
+	return song, nil
 }
 
 func convertErr(err error) error {
