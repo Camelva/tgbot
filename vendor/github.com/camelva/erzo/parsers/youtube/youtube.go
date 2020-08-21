@@ -44,6 +44,14 @@ func (ie Extractor) Extract(u url.URL) (*parsers.ExtractorInfo, error) {
 		return nil, err
 	}
 	formats := parsers.Formats{}
+
+	if len(video.Streams) < 1 {
+		return nil, parsers.ErrCantContinue{Reason: "No formats"}
+	}
+
+	// add first available iTag for external usage
+	audioITags = append(audioITags, video.Streams[0].ItagNo)
+
 	for _, tag := range audioITags {
 		if len(formats) > 2 {
 			break

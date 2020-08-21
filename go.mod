@@ -5,7 +5,7 @@ go 1.13
 // +heroku goVersion go1.13
 
 require (
-	github.com/camelva/erzo v0.0.0-20200814112736-babdfb43c60b
+	github.com/camelva/erzo v0.0.0-20200821145853-9b4047ce5f2f
 	github.com/go-telegram-bot-api/telegram-bot-api v4.6.5-0.20190904012038-b33efeebc785+incompatible
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/kr/text v0.2.0 // indirect

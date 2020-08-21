@@ -115,6 +115,11 @@ func (e Engine) GetInfo(s string) (*SongInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if len(info.Formats) < 1 {
+		return nil, ErrCantFetchInfo{}
+	}
+
 	return &SongInfo{
 		Info:   info,
 		URL:    info.Formats[0].Url,
