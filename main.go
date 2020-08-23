@@ -211,7 +211,11 @@ func deleteMessage(bot *tgbotapi.BotAPI, chat *tgbotapi.Chat, messageID int) {
 }
 
 func oversized(s string) bool {
-	resp, err := http.Get(s)
+	r, _ := http.NewRequest(http.MethodGet, s, nil)
+	r.Header.Set("Accept-Encoding", "gzip, deflate, br")
+	r.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
+	r.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:80.0) Gecko/20100101 Firefox/80.0")
+	resp, err := http.DefaultClient.Do(r)
 	if err != nil {
 		return true
 	}
