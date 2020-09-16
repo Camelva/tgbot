@@ -1,4 +1,4 @@
-# github.com/camelva/erzo v0.0.0-20200821145853-9b4047ce5f2f
+# github.com/camelva/erzo v0.0.0-20200916160424-3b1d47374ee0
 github.com/camelva/erzo
 github.com/camelva/erzo/engine
 github.com/camelva/erzo/loaders

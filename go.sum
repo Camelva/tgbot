@@ -1,5 +1,7 @@
 github.com/camelva/erzo v0.0.0-20200821145853-9b4047ce5f2f h1:blnB/GxLZrPBCevxE9W93NPf2TSLKdaKCaanSKXekQU=
 github.com/camelva/erzo v0.0.0-20200821145853-9b4047ce5f2f/go.mod h1:Pqzlp8KKZ8KKIwUQkna8Bfbf+XIX3cpjTAnTYUk/EX4=
+github.com/camelva/erzo v0.0.0-20200916160424-3b1d47374ee0 h1:SBsbc/Zkygj6KF5DZ8WsoqZyBdlEO9SH9HUuOdDbWy8=
+github.com/camelva/erzo v0.0.0-20200916160424-3b1d47374ee0/go.mod h1:Pqzlp8KKZ8KKIwUQkna8Bfbf+XIX3cpjTAnTYUk/EX4=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/go-telegram-bot-api/telegram-bot-api v4.6.5-0.20190904012038-b33efeebc785+incompatible h1:OT02onvXX618RBcjxeUA4H7d1PSm5Apg4IET72VgVlE=
 github.com/go-telegram-bot-api/telegram-bot-api v4.6.5-0.20190904012038-b33efeebc785+incompatible/go.mod h1:qf9acutJ8cwBUhm1bqgz6Bei9/C/c93FPDljKWwsOgM=

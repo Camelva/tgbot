@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"net/url"
 	"os"
 	"path"
@@ -86,6 +87,9 @@ func (ie extractor) Name() string {
 
 func (ie extractor) Compatible(u url.URL) bool {
 	s := u.Hostname()
+	if s == "soundcloud.app.goo.gl" {
+		return true
+	}
 	ok, _ := regexp.MatchString(ie.urlPattern, s)
 	return ok
 }
@@ -116,6 +120,14 @@ type scURL struct {
 }
 
 func parseURL(u url.URL) *scURL {
+	if u.Host == "soundcloud.app.goo.gl" {
+		newURL, err := getRealURL(&u)
+		if err != nil {
+			return nil
+		}
+		u = *newURL
+	}
+
 	urlPath := u.EscapedPath()
 	stationTmpl := `^/(?:stations)/(?:track)/([\w-]+)/([\w-]+)(?:|/|/([\w-]+)/?)$`
 	stationRE := regexp.MustCompile(stationTmpl)
@@ -397,4 +409,12 @@ func updateToken() error {
 		return nil
 	}
 	return fmt.Errorf("can't retrieve token")
+}
+
+func getRealURL(u *url.URL) (*url.URL, error) {
+	res, err := http.Get(u.String())
+	if err != nil {
+		return nil, err
+	}
+	return res.Request.URL, nil
 }
