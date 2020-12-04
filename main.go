@@ -29,15 +29,18 @@ func main() {
 
 	for update := range updates {
 		var msg *tgbotapi.Message
+		var err error
 		if update.Message != nil {
 			msg = update.Message
+			err = handleMessage(bot, update.Message)
 		} else if update.ChannelPost != nil {
 			msg = update.ChannelPost
+			err = onNewPost(bot, update.ChannelPost)
 		} else {
 			continue
 		}
 		dbMsgID := reportMessage(msg)
-		if err := handleMessage(bot, msg); err != nil {
+		if err != nil {
 			handleError(bot, msg, err, dbMsgID)
 		}
 	}
@@ -156,6 +159,58 @@ func handleMessage(bot *tgbotapi.BotAPI, message *tgbotapi.Message) error {
 	audioMsg.Performer = songData.Author
 	audioMsg.Duration = int(songData.Duration.Seconds())
 	audioMsg.ReplyToMessageID = message.MessageID
+
+	// and only then send song file
+	if _, err := bot.Send(audioMsg); err != nil {
+		return err
+	}
+
+	log.Println("Waiting for another message ~_~")
+	return nil
+}
+
+func onNewPost(bot *tgbotapi.BotAPI, post *tgbotapi.Message) error {
+	language := "en"
+	if post.From != nil {
+		language = post.From.LanguageCode
+	}
+	BotPhrase = Responses.Get(language)
+
+	if post.IsCommand() {
+		response := checkForCommands(post)
+		sendMessage(bot, post, response, true)
+		return nil
+	}
+
+	songInfo, err := erzo.GetInfo(post.Text, erzo.OptionTruncate(true))
+
+	if err != nil {
+		// if its not url - just ignore
+		if _, ok := err.(erzo.ErrNotURL); ok {
+			return nil
+		}
+		return err
+	}
+
+	if oversized(songInfo.URL) {
+		sendMessage(bot, post, BotPhrase.ErrTooLarge(), true)
+		return nil
+	}
+
+	songData, err := songInfo.Get()
+	if err != nil {
+		return err
+	}
+	log.Println("Downloaded song. Uploading to user...")
+
+	// Inform user about uploading
+	_, _ = bot.Send(tgbotapi.NewChatAction(post.Chat.ID, "upload_audio"))
+
+	audioMsg := tgbotapi.NewAudioUpload(post.Chat.ID, songData.Path)
+	audioMsg.Title = songData.Title
+	audioMsg.Performer = songData.Author
+	audioMsg.Duration = int(songData.Duration.Seconds())
+	audioMsg.ReplyToMessageID = post.MessageID
 
 	// and only then send song file
 	if _, err := bot.Send(audioMsg); err != nil {
