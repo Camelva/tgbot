@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 var BotPhrase = Responses.Get("en")
@@ -135,6 +136,11 @@ func handleMessage(bot *tgbotapi.BotAPI, message *tgbotapi.Message) error {
 		return err
 	}
 
+	if songInfo.Info.Duration >= time.Minute*10 {
+		sendMessage(bot, message, BotPhrase.ErrDurationLimit(), true)
+		return nil
+	}
+
 	if oversized(songInfo.URL) {
 		sendMessage(bot, message, BotPhrase.ErrTooLarge(), true)
 		return nil
@@ -192,6 +198,11 @@ func onNewPost(bot *tgbotapi.BotAPI, post *tgbotapi.Message) error {
 		return err
 	}
 
+	if songInfo.Info.Duration >= time.Minute*10 {
+		sendMessage(bot, post, BotPhrase.ErrDurationLimit(), true)
+		return nil
+	}
+
 	if oversized(songInfo.URL) {
 		sendMessage(bot, post, BotPhrase.ErrTooLarge(), true)
 		return nil
@@ -239,6 +250,7 @@ func sendMessage(bot *tgbotapi.BotAPI, msgInfo *tgbotapi.Message, text string, r
 	if reply {
 		msgObj.ReplyToMessageID = msgInfo.MessageID
 	}
+	msgObj.ParseMode = "HTML"
 	return send(bot, msgObj)
 }
 

@@ -4,12 +4,13 @@ type PhraseEN struct{}
 
 // Commands
 func (PhraseEN) CmdStart() string {
-	return "Hello, #{username}.\n" +
+	return "Hello, user.\n" +
 		"I'm SoundCloud downloader bot.\n" +
 		"Send me an url and i will respond with attached audio file"
 }
 func (PhraseEN) CmdHelp() string {
-	return "Send me an url and i will download it for you.\n" +
+	return "<b>Check</b> @sc_download_bot_info <b>to keep in touch with latest bot changes</b>\n\n" +
+		"Send me an url and i will download it for you.\n" +
 		"If something went wrong - first make sure url is valid and song available." +
 		"Then try send message again." +
 		"If error still persist - contact with developer (link in description)\n" +
@@ -56,4 +57,9 @@ func (PhraseEN) ErrTooLarge() string {
 	return "Looks like this song weighs too much.\n" +
 		"Telegram limits uploading files size to 50mb and we can't avoid this limit.\n" +
 		"Please try another one"
+}
+func (PhraseEN) ErrDurationLimit() string {
+	return "Looks like this song duration is more than 10 minutes.\n" +
+		"Check out bot info channel to understand new limitations.\n" +
+		"Use /help for additional info."
 }
