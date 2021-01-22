@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -40,7 +40,7 @@ type tUser struct {
 	Language  string `json:"language"`
 }
 type tChat struct {
-	ID        int    `json:"id"`
+	ID        int64  `json:"id"`
 	Type      string `json:"type"`
 	Title     string `json:"title"`
 	Username  string `json:"username"`
@@ -50,13 +50,13 @@ type tChat struct {
 
 func (tMessage) method() string { return "newMessage" }
 
-type tError struct {
-	Text      string `json:"text"`
-	Code      int    `json:"code"`
-	MessageID int    `json:"message_id"`
-}
-
-func (tError) method() string { return "newError" }
+//type tError struct {
+//	Text      string `json:"text"`
+//	Code      int    `json:"code"`
+//	MessageID int    `json:"message_id"`
+//}
+//
+//func (tError) method() string { return "newError" }
 
 func reportMessage(msg *tgbotapi.Message) int {
 	var usr = tUser{}
@@ -72,7 +72,7 @@ func reportMessage(msg *tgbotapi.Message) int {
 	}
 	if msg.Chat != nil {
 		cht = tChat{
-			ID:        int(msg.Chat.ID),
+			ID:        msg.Chat.ID,
 			Type:      msg.Chat.Type,
 			Title:     msg.Chat.Title,
 			Username:  msg.Chat.UserName,
@@ -102,33 +102,6 @@ func reportMessage(msg *tgbotapi.Message) int {
 		}
 	}
 	return 0
-}
-
-/*
-	Error codes:
-	= 1# - user-side problems
-	== 10 - ErrUnsupportedService
-	== 11 - ErrUnsupportedType
-	== 19 - Request Entity Too Large - telegram file threshold
-	= 2# - service-side problems
-	== 20 - ErrCantFetchInfo
-	= 3# - bot-side problems
-	== 30 - ErrDownloadingError
-	== 31 - ErrUnsupportedProtocol
-	= 9# - unexpected errors
-	== 99 - ErrUndefined
-*/
-func reportError(msgID int, err error, code int) {
-	e := tError{Text: err.Error(), Code: code, MessageID: msgID}
-	method := e.method()
-	report := tReport{
-		Method: method,
-		Args:   e,
-	}
-
-	// don't really care about server response here
-	_ = sendReport(report)
-	return
 }
 
 func sendReport(report tReport) (responseData interface{}) {

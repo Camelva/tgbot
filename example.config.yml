@@ -1,10 +1,8 @@
 # You should put tokens here and rename this file to "config.yml"
 # Or you can use environment variables
-# "SEGMENTIO_TOKEN" and "TELEGRAM_TOKEN"
-segmentio:
-  token: ""
 telegram:
-  token: ""
-  testToken: ""
+  token: "" #TELEGRAM_TOKEN
+  testToken: "" #TELEGRAM_TEST_TOKEN
+  ownerID: 0 #TELEGRAM_OWNER_ID
 # debug | production
-mode: ""
+mode: "" #MODE

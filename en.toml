@@ -1,0 +1,46 @@
+[cmd]
+Start = """Hello, user!👋
+I'm SoundCloud downloader bot.
+Send me an url from [soundcloud.com] and i will respond with attached audio file
+
+Updates channel: @sc_download_bot_info"""
+
+Help = """Send me an url and i will download it for you.
+If something went wrong - first make sure url is valid and song available.
+Then try send message again. \
+If error still persist - contact with developer (@Camelva)
+
+= Updates channel: @sc_download_bot_info
+= Currently supported only direct song links from [soundcloud.com]"""
+
+Default = """I don't know that command.
+Use /help for additional info"""
+
+[process]
+Start = """Please wait, checking song availability.."""
+
+Fetching = """Fetching song from soundcloud.."""
+
+Uploading = """Everything done. Uploading song to you.."""
+
+[err]
+NotURL = """I can't find any link in your message. 👀
+If there is some other text - try to remove everything else and send message again"""
+
+NotSoundCloudURL = """This link does not seem to lead to [soundcloud.com]. 👀
+If there is some other text - try to remove everything else and send message again"""
+
+UnsupportedFormat = """I do not know how to work with playlists and other formats yet"""
+
+UnsupportedService = """This service unsupported yet."""
+
+UnavailableSong = """Are you sure this song is available? Because i can't get it 😕.
+Make sure it is available and try again or contact developer for additional help"""
+
+SizeLimit = """Looks like this song weighs too much.
+Telegram limits uploading files size to 50mb and we can't avoid this limit."""
+
+Default = """There is some undefined error with this song 🤔.
+Please try again or contact with developer.
+
+Error text: {{.errMessage}}"""

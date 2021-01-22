@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"github.com/kelseyhightower/envconfig"
 	"gopkg.in/yaml.v2"
 	"log"
@@ -9,27 +8,21 @@ import (
 )
 
 type Config struct {
-	Segmentio `yaml:"segmentio"`
-	Telegram  `yaml:"telegram"`
-	Mode      string `yaml:"mode" envconfig:"MODE"`
-}
-
-type Segmentio struct {
-	Token string `yaml:"token" envconfig:"SEGMENTIO_TOKEN"`
+	Telegram Telegram `yaml:"telegram"`
+	Mode     string   `yaml:"mode" envconfig:"MODE"`
 }
 
 type Telegram struct {
 	Token     string `yaml:"token" envconfig:"TELEGRAM_TOKEN"`
 	TestToken string `yaml:"testToken" envconfig:"TELEGRAM_TEST_TOKEN"`
+	OwnerID   int    `yaml:"ownerID" envconfig:"TELEGRAM_OWNER_ID"`
 }
 
 func loadConfig(file string) (cfg Config) {
-	if err := readFile(file, &cfg); err != nil {
-		log.Println(err)
-	}
-	if err := readEnv(&cfg); err != nil {
-		log.Println(err)
-	}
+	// env variables always overwrite
+	readFile(file, &cfg)
+	readEnv(&cfg)
+
 	if (cfg == Config{}) {
 		log.Fatal("config not loaded!")
 	}
@@ -39,28 +32,27 @@ func loadConfig(file string) (cfg Config) {
 	return cfg
 }
 
-func readFile(fileName string, cfg *Config) (e error) {
+func readFile(fileName string, cfg *Config) {
 	f, err := os.Open(fileName)
 	if err != nil {
-		return errors.New("can't read config file")
+		log.Println("can't read config file")
 	}
 	defer closeFile(f)
 
 	decoder := yaml.NewDecoder(f)
 	err = decoder.Decode(cfg)
 	if err != nil {
-		return errors.New("can't decode config file")
+		log.Println("can't decode config file")
 	}
-	return nil
+	return
 }
 
-func readEnv(cfg *Config) (e error) {
-	log.Println("Loading env")
+func readEnv(cfg *Config) {
 	err := envconfig.Process("", cfg)
 	if err != nil {
-		return errors.New("can't read environment variables")
+		log.Println("can't read environment variables")
 	}
-	return nil
+	return
 }
 
 func closeFile(f *os.File) {

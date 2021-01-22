@@ -1,17 +1,21 @@
-# github.com/camelva/erzo v0.0.0-20200916160424-3b1d47374ee0
-github.com/camelva/erzo
-github.com/camelva/erzo/engine
-github.com/camelva/erzo/loaders
-github.com/camelva/erzo/loaders/ffmpeg
-github.com/camelva/erzo/parsers
-github.com/camelva/erzo/parsers/soundcloud
-github.com/camelva/erzo/parsers/youtube
-github.com/camelva/erzo/utils
-# github.com/go-telegram-bot-api/telegram-bot-api v4.6.5-0.20190904012038-b33efeebc785+incompatible
-github.com/go-telegram-bot-api/telegram-bot-api
+# github.com/camelva/soundcloader v0.0.0-20210109110829-95680f5c3287
+github.com/camelva/soundcloader
+# github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.0.0-rc1.0.20201106042948-366879b11047
+github.com/go-telegram-bot-api/telegram-bot-api/v5
 # github.com/kelseyhightower/envconfig v1.4.0
 github.com/kelseyhightower/envconfig
+# github.com/nicksnyder/go-i18n/v2 v2.1.2
+github.com/nicksnyder/go-i18n/v2/i18n
+github.com/nicksnyder/go-i18n/v2/internal
+github.com/nicksnyder/go-i18n/v2/internal/plural
+# github.com/pelletier/go-toml v1.8.1
+github.com/pelletier/go-toml
 # github.com/technoweenie/multipartstreamer v1.0.1
 github.com/technoweenie/multipartstreamer
+# golang.org/x/text v0.3.5
+golang.org/x/text/internal/language
+golang.org/x/text/internal/language/compact
+golang.org/x/text/internal/tag
+golang.org/x/text/language
 # gopkg.in/yaml.v2 v2.3.0
 gopkg.in/yaml.v2

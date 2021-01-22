@@ -1,68 +1,40 @@
 package main
 
-//var BotPhrase = struct {
-//	CmdStart, CmdHelp, CmdUnknown,
-//	ProcessStart, ProcessUploading,
-//	ErrNotURL, ErrUndefined, ErrPlaylist, ErrUnsupportedFormat, ErrUnsupportedService, ErrUnavailableSong string
-//}{
-//	// Commands
-//	CmdStart: "Hello, #{username}.\n" +
-//		"I'm SoundCloud downloader bot.\n" +
-//		"Send me an url and i will respond with attached audio file",
-//	CmdHelp: "Send me an url and i will respond to you with attached audio file.\n" +
-//		"|===| Currently supported services: |===|\n" +
-//		"= soundcloud.com [only direct song urls yet]\n" +
-//		"\nIf something went wrong - try again or contact with developer (link in description)",
-//	CmdUnknown: "I don't know that command. " +
-//		"Please send me an url to SoundCloud song or type /help for more info",
-//	// Process explaining
-//	ProcessStart:     "Please wait...",
-//	ProcessUploading: "Everything done. Uploading song to you...",
-//	// Exceptions
-//	ErrNotURL:             "Please send me a message with valid url",
-//	ErrUndefined:          "There is some problems with this song. Please try again or contact with developer",
-//	ErrPlaylist:           "Sorry, but i don't work with playlists yet. Use /help for more info",
-//	ErrUnsupportedFormat:  "This format unsupported yet. Use /help for more info",
-//	ErrUnsupportedService: "This service unsupported yet. Use /help for more info",
-//	ErrUnavailableSong: "Can't load this song. Make sure it is available and try again.\n" +
-//		"Otherwise, contact with developer using link from description",
-//}
+import (
+	"github.com/nicksnyder/go-i18n/v2/i18n"
+	//"github.com/BurntSushi/toml"
+	"github.com/pelletier/go-toml"
+	"golang.org/x/text/language"
+)
 
-type responseContainer interface {
-	CmdStart() string
-	CmdHelp() string
-	CmdUnknown() string
+var (
+	processStart     = &i18n.LocalizeConfig{MessageID: "process.Start"}
+	processFetching  = &i18n.LocalizeConfig{MessageID: "process.Fetching"}
+	processUploading = &i18n.LocalizeConfig{MessageID: "process.Uploading"}
 
-	ProcessStart() string
-	ProcessUploading() string
+	cmdStart     = &i18n.LocalizeConfig{MessageID: "cmd.Start"}
+	cmdHelp      = &i18n.LocalizeConfig{MessageID: "cmd.Help"}
+	cmdUndefined = &i18n.LocalizeConfig{MessageID: "cmd.Default"}
 
-	ErrNotURL() string
-	ErrUndefined() string
-	ErrPlaylist() string
-	ErrUnsupportedFormat() string
-	ErrUnsupportedService() string
-	ErrUnavailableSong() string
-	ErrTooLarge() string
-
-	ErrDurationLimit() string
-}
-
-type languages map[string]responseContainer
-
-func (l languages) Get(lang string) responseContainer {
-	switch lang {
-	case "uk":
-		fallthrough
-	case "ru":
-		return l["ru"]
-	case "en":
-		fallthrough
-	default:
-		return l["en"]
+	errNotURL            = &i18n.LocalizeConfig{MessageID: "err.NotURL"}
+	errNotSCURL          = &i18n.LocalizeConfig{MessageID: "err.NotSoundCloudURL"}
+	errUnsupportedFormat = &i18n.LocalizeConfig{MessageID: "err.UnsupportedFormat"}
+	//errUnsupportedService = "err.UnsupportedService"
+	errSizeLimit       = &i18n.LocalizeConfig{MessageID: "err.SizeLimit"}
+	errUnavailableSong = &i18n.LocalizeConfig{MessageID: "err.UnavailableSong"}
+	errUndefined       = func(err error) *i18n.LocalizeConfig {
+		return &i18n.LocalizeConfig{
+			MessageID:    "err.Default",
+			TemplateData: map[string]string{"errMessage": err.Error()},
+		}
 	}
-}
+)
 
-var Responses = languages{
-	"en": new(PhraseEN),
-	"ru": new(PhraseRU),
+func getResponses() *i18n.Bundle {
+	var bundle = i18n.NewBundle(language.English)
+	bundle.RegisterUnmarshalFunc("toml", toml.Unmarshal)
+	bundle.MustLoadMessageFile("en.toml")
+	bundle.MustLoadMessageFile("ru.toml")
+
+	return bundle
 }
