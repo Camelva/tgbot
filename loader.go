@@ -16,13 +16,12 @@ type fileState struct {
 
 func (c *Client) downloader(sourcesChan chan result) {
 	var sameTimeLoadersLimit = 10
-	c.workingLoaders = make(map[string]*fileState)
+	c.workingLoaders = make(map[int]*fileState)
 	c.capacitor = make(chan struct{}, sameTimeLoadersLimit)
 
-	//var workingGoroutines = map[string]*fileState{}
 	for res := range sourcesChan {
 		log.Print(c.loadersInfo())
-		log.Printf("adding loader to queue: %s", res.song.ID)
+		log.Printf("adding loader to queue: [%d] %s", res.song.ID, res.song.Permalink)
 
 		c.editMessage(&res.tmpMsg,
 			c.getDict(&res.msg).MustLocalize(processFetching))
@@ -92,7 +91,7 @@ func (c *Client) download(res result) {
 }
 
 func (c *Client) loadAndPrepareSong(res result) string {
-	log.Printf("start getting: [%s]\n", res.song.ID)
+	log.Printf("start getting: [%d] %s", res.song.ID, res.song.Permalink)
 
 	songPath, err := res.song.GetNext()
 

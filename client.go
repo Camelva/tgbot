@@ -6,7 +6,6 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"log"
-	"strings"
 )
 
 type Client struct {
@@ -14,7 +13,7 @@ type Client struct {
 	resp   *i18n.Bundle
 	loader *soundcloader.Client
 
-	workingLoaders map[string]*fileState
+	workingLoaders map[int]*fileState
 	capacitor      chan struct{}
 
 	ownerID int
@@ -101,11 +100,11 @@ func (c *Client) getDict(msg *tgbotapi.Message) *i18n.Localizer {
 }
 
 func (c *Client) loadersInfo() string {
-	keys := make([]string, 0, len(c.workingLoaders))
+	keys := make([]int, 0, len(c.workingLoaders))
 	for k := range c.workingLoaders {
 		keys = append(keys, k)
 	}
 	return fmt.Sprintf(
-		"\n#########\n# Active loaders amount: %d\n# Loaders: %s\n# Limit: %d\n#########\n",
-		len(c.capacitor), strings.Join(keys, ", "), cap(c.capacitor))
+		"\n#########\n# Active loaders amount: %d\n# Loaders: %v\n# Limit: %d\n#########\n",
+		len(c.capacitor), keys, cap(c.capacitor))
 }
