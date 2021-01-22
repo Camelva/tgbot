@@ -50,36 +50,37 @@ func (c *Client) download(res result) {
 
 	if state.filePath == "" {
 		r := c.loadAndPrepareSong(res)
-		if r == "" {
-			return
-		}
 
+		// can be empty
 		songPath = r
 	} else {
 		songPath = state.filePath
 	}
 
-	c.editMessage(&res.tmpMsg,
-		c.getDict(&res.msg).MustLocalize(processUploading))
+	if songPath != "" {
+		c.editMessage(&res.tmpMsg,
+			c.getDict(&res.msg).MustLocalize(processUploading))
 
-	audioMsg := tgbotapi.NewAudioUpload(res.msg.Chat.ID, songPath)
-	audioMsg.Title = res.song.Title
-	audioMsg.Performer = res.song.Author
-	audioMsg.Duration = int(res.song.Duration.Seconds())
-	audioMsg.ReplyToMessageID = res.msg.MessageID
+		audioMsg := tgbotapi.NewAudioUpload(res.msg.Chat.ID, songPath)
+		audioMsg.Title = res.song.Title
+		audioMsg.Performer = res.song.Author
+		audioMsg.Duration = int(res.song.Duration.Seconds())
+		audioMsg.ReplyToMessageID = res.msg.MessageID
 
-	if _, err := c.bot.Send(audioMsg); err != nil {
-		log.Printf("can't send song to user: %s\n", err)
-		c.sendMessage(&res.msg, c.getDict(&res.msg).MustLocalize(errUndefined(err)), true)
+		if _, err := c.bot.Send(audioMsg); err != nil {
+			log.Printf("can't send song to user: %s\n", err)
+			c.sendMessage(&res.msg, c.getDict(&res.msg).MustLocalize(errUndefined(err)), true)
+		}
+
+		c.deleteMessage(&res.tmpMsg)
+
+		log.Printf("done with [%d] %s", res.song.ID, res.song.Permalink)
+
+		state.filePath = songPath
 	}
-
-	c.deleteMessage(&res.tmpMsg)
-
-	log.Printf("done with %s", res.song.ID)
 
 	state.active--
 
-	state.filePath = songPath
 	state.mu.Unlock()
 	<-c.capacitor
 
