@@ -5,7 +5,7 @@ go 1.13
 // +heroku goVersion go1.13
 
 require (
-	github.com/camelva/soundcloader v0.0.0-20210109110829-95680f5c3287
+	github.com/camelva/soundcloader v0.0.0-20210122202950-3abd1b58381d
 	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.0.0-rc1.0.20201106042948-366879b11047
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/kr/text v0.2.0 // indirect

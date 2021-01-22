@@ -10,7 +10,8 @@ import (
 type Song struct {
 	client *Client
 
-	ID          string
+	ID          int
+	Permalink   string
 	Streams     []Stream
 	Title       string
 	Author      string
@@ -22,7 +23,8 @@ type Song struct {
 }
 
 func (s *Song) parseSongInfo(meta *metadataV2) {
-	s.ID = meta.Permalink
+	s.ID = meta.ID
+	s.Permalink = meta.Permalink
 	s.Title = meta.Title
 	s.Author = meta.User.Username
 
@@ -74,17 +76,6 @@ func (s *Song) increaseCounter() {
 	s.streamCounter++
 }
 
-//func (s *Song) GetNext() (filename string, err error) {
-//	filename, err = s.Get(s.streamCounter)
-//	s.increaseCounter()
-//
-//	if err == fmt.Errorf("empty stream") && (s.streamCounter >= len(s.Streams) - 1) {
-//		return s.GetNext()
-//	}
-//
-//	return
-//}
-
 func (s *Song) GetNext() (filename string, err error) {
 	filename, err = s.Get(s.streamCounter)
 	s.increaseCounter()
@@ -124,7 +115,9 @@ func (s *Song) Get(i int) (filename string, err error) {
 	if err != nil {
 		return
 	}
-	err = s.client.ffmpegAddThumbnail(filename, s.Thumbnail)
+	if s.Thumbnail != "" {
+		err = s.client.ffmpegAddThumbnail(filename, s.Thumbnail)
+	}
 	return
 }
 
@@ -159,6 +152,10 @@ func (s *Song) createMetadata() []string {
 }
 
 func getBestThumbnail(u string) string {
+	if u == "" {
+		return ""
+	}
+
 	var bestSize = "t500x500"
 	parts := strings.Split(u, "-")
 	lastPartSplit := strings.Split(parts[len(parts)-1], ".")

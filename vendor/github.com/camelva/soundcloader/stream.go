@@ -24,7 +24,7 @@ func (s *Stream) Get() (fileLocation string, err error) {
 	}
 
 	if s.Format != "original" {
-		filename := fmt.Sprintf("%s.%s", s.parent.ID, s.Extension)
+		filename := fmt.Sprintf("%s.%s", s.parent.Permalink, s.Extension)
 		fileLocation = filepath.Join(s.parent.client.OutputFolder, filename)
 		if alreadyExist(fileLocation) {
 			return fileLocation, nil
