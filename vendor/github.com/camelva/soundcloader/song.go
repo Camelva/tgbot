@@ -24,6 +24,9 @@ type Song struct {
 }
 
 func (s *Song) parseSongInfo(meta *metadataV2) {
+	if s.client.Debug {
+		log.Printf("meta: %#v", meta)
+	}
 	s.ID = meta.ID
 	s.Permalink = meta.Permalink
 	s.Title = meta.Title
