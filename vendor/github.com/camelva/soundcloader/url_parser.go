@@ -130,6 +130,11 @@ func extractURL(message string) *url.URL {
 }
 
 func (c *Client) unwrapURL(u *url.URL) *url.URL {
+	if u.Host == "m.soundcloud.com" {
+		u.Host = "soundcloud.com"
+		return u
+	}
+
 	if u.Host != "soundcloud.app.goo.gl" {
 		return u
 	}

@@ -2,6 +2,7 @@ package soundcloader
 
 import (
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -77,15 +78,28 @@ func (s *Song) increaseCounter() {
 }
 
 func (s *Song) GetNext() (filename string, err error) {
+	if s.client.Debug {
+		log.Printf("Start getting [%d] %s", s.ID, s.Permalink)
+		log.Printf("Streams: %#v", s.Streams)
+	}
 	filename, err = s.Get(s.streamCounter)
 	s.increaseCounter()
 
 	if err == EmptyStream {
+		if s.client.Debug {
+			log.Printf("stream #%d empty", s.streamCounter-1)
+		}
 		for i := 1; i < len(s.Streams); i++ {
+			if s.client.Debug {
+				log.Printf("trying next stream #%d", s.streamCounter)
+			}
 			filename, err = s.Get(s.streamCounter)
 			s.increaseCounter()
 
 			if err == EmptyStream {
+				if s.client.Debug {
+					log.Printf("stream #%d empty", s.streamCounter-1)
+				}
 				continue
 			}
 			break

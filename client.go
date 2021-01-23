@@ -38,6 +38,7 @@ func (c *Client) Debug() bool {
 
 func (c *Client) SetDebug(b bool) {
 	c.bot.Debug = b
+	c.loader.Debug = b
 	c.debug = b
 }
 

@@ -3,6 +3,7 @@ package soundcloader
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 )
@@ -32,16 +33,25 @@ func (s *Stream) Get() (fileLocation string, err error) {
 	}
 
 	if s.URL == "" {
+		if s.parent.client.Debug {
+			log.Printf("Current stream URL empty\n")
+		}
 		return "", EmptyStream
 	}
 
 	res, err := s.parent.client.fetch(s.URL, true)
 	if err != nil {
+		if s.parent.client.Debug {
+			log.Printf("Can't fetch url: %s\n", err)
+		}
 		return
 	}
 
 	wrappedRes := new(wrappedURL)
 	if err = json.Unmarshal(res, wrappedRes); err != nil {
+		if s.parent.client.Debug {
+			log.Printf("Invalid json: %s\n", wrappedRes)
+		}
 		return "", InvalidJSON
 	}
 
