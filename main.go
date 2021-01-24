@@ -5,6 +5,7 @@ import (
 	"github.com/camelva/soundcloader"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"log"
+	"os"
 	"os/signal"
 	"runtime"
 	"time"
@@ -40,7 +41,7 @@ func main() {
 
 	log.Printf("Authorized on account %s\n", bot.Self.UserName)
 
-	signal.Notify(c.shutdown)
+	signal.Notify(c.shutdown, os.Interrupt, os.Kill)
 	go func() {
 		<-c.shutdown
 		c.exit()
