@@ -19,6 +19,8 @@ Use /help for additional info"""
 [process]
 Start = """Please wait, checking song availability.."""
 
+Queue = """Process your previous songs.."""
+
 Fetching = """Fetching song from soundcloud.."""
 
 Uploading = """Everything done. Uploading song to you.."""

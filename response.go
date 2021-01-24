@@ -9,6 +9,7 @@ import (
 
 var (
 	processStart     = &i18n.LocalizeConfig{MessageID: "process.Start"}
+	processQueue     = &i18n.LocalizeConfig{MessageID: "process.Queue"}
 	processFetching  = &i18n.LocalizeConfig{MessageID: "process.Fetching"}
 	processUploading = &i18n.LocalizeConfig{MessageID: "process.Uploading"}
 

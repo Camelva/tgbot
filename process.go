@@ -10,7 +10,7 @@ import (
 	"unicode/utf16"
 )
 
-func (c *Client) processMessage(msg *tgbotapi.Message, resChan chan result) {
+func (c *Client) processMessage(msg *tgbotapi.Message) {
 	log.Println("Got new message")
 	reportMessage(msg)
 
@@ -72,62 +72,61 @@ func (c *Client) processMessage(msg *tgbotapi.Message, resChan chan result) {
 		return
 	}
 
-	resChan <- result{*msg, *tmpMsg, *song}
+	c.results <- result{*msg, *tmpMsg, *song}
 	return
 }
 
 func (c *Client) processCmd(msg *tgbotapi.Message) {
 	log.Println("its command, responding..")
-	cmd := msg.Command()
-
-	switch cmd {
-	// basic commands
-	case "help":
+	if msg.Command() == "help" {
 		c.sendMessage(msg, c.getDict(msg).MustLocalize(cmdHelp), true)
 		return
-	case "start":
+	}
+
+	if msg.Command() == "start" {
 		c.sendMessage(msg, c.getDict(msg).MustLocalize(cmdStart), true)
 		return
+	}
 
-	// admin commands
+	if c.adminCommand(msg) {
+		return
+	}
+
+	c.sendMessage(msg, c.getDict(msg).MustLocalize(cmdUndefined), true)
+	return
+}
+
+func (c *Client) adminCommand(msg *tgbotapi.Message) (ok bool) {
+	if !c.sentByOwner(msg) {
+		return false
+	}
+
+	switch msg.Command() {
 	case "debug":
-		if !c.sentByOwner(msg) {
-			return
-		}
-
 		d := msg.CommandArguments()
 		if d == "true" || d == "1" || d == "yes" {
 			c.SetDebug(true)
 		} else if d == "false" || d == "0" || d == "no" {
 			c.SetDebug(false)
 		}
-		c.sendMessage(msg, "done!", true)
-		return
+		c.sendMessage(msg, fmt.Sprintf("Debug = %t", c.debug), true)
+		return true
 	case "stats":
-		if !c.sentByOwner(msg) {
-			return
-		}
-		stats := getUsageStats()
-		c.sendMessage(msg, stats, true)
-		return
+		c.sendMessage(msg, getUsageStats(), true)
+		return true
 	case "queue":
-		if !c.sentByOwner(msg) {
-			return
-		}
 		c.sendMessage(msg, c.loadersInfo(), true)
-		return
+		return true
 	case "gr":
-		if !c.sentByOwner(msg) {
-			return
-		}
 		c.sendMessage(msg, fmt.Sprintf("Goroutines number: %d", runtime.NumGoroutine()), true)
-		return
-	case "memorystats":
-		if !c.sentByOwner(msg) {
-			return
-		}
-		c.sendMessage(msg, "hey", true)
+		return true
+	//case "memorystats":
+	//	c.sendMessage(msg, "hey", true)
+	//	return true
+	case "stop":
+		c.exit()
+		c.sendMessage(msg, "Done!", true)
+		return true
 	}
-	c.sendMessage(msg, c.getDict(msg).MustLocalize(cmdUndefined), true)
-	return
+	return false
 }

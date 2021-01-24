@@ -5,7 +5,9 @@ import (
 	"github.com/camelva/soundcloader"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"log"
+	"os/signal"
 	"runtime"
+	"time"
 )
 
 type result struct {
@@ -19,45 +21,50 @@ func main() {
 
 	bot, err := tgbotapi.NewBotAPI(config.Telegram.Token)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("cant init telegram bot: %s", err)
 	}
 
-	c := NewClient(bot, soundcloader.DefaultClient, getResponses())
+	c, err := NewClient(ClientConfig{
+		b:              bot,
+		dict:           getResponses(),
+		ownerID:        config.Telegram.OwnerID,
+		loadersLimit:   10,
+		fileExpiration: time.Hour,
+	})
 
-	c.SetOwner(config.Telegram.OwnerID)
+	if err != nil {
+		log.Fatalf("cant create client: %s", err)
+	}
 
-	c.bot.Debug = false
+	//c.SetDebug(true)
 
 	log.Printf("Authorized on account %s\n", bot.Self.UserName)
+
+	signal.Notify(c.shutdown)
+	go func() {
+		<-c.shutdown
+		c.exit()
+	}()
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
 	updates := c.bot.GetUpdatesChan(u)
 
-	resChan := make(chan result)
-
-	go c.downloader(resChan)
+	go c.downloader()
 
 	for update := range updates {
 		if update.Message != nil {
-			go c.processMessage(update.Message, resChan)
+			go c.processMessage(update.Message)
 		} else if update.ChannelPost != nil {
-			go c.processMessage(update.ChannelPost, resChan)
+			go c.processMessage(update.ChannelPost)
 		} else {
 			continue
 		}
 	}
-}
 
-func (c *Client) sentByOwner(msg *tgbotapi.Message) bool {
-	if msg.From == nil {
-		return false
-	}
-	if msg.From.ID != c.ownerID {
-		return false
-	}
-	return true
+	<-c.done
+	log.Println("shutting down..")
 }
 
 func getUsageStats() string {

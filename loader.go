@@ -5,89 +5,104 @@ import (
 	"log"
 	"os"
 	"sync"
+	"time"
 )
 
-type fileState struct {
-	mu     sync.Mutex
-	active int
+type fileInfo struct {
+	c              sync.Cond
+	cacheContainer *map[int]*fileInfo
 
-	filePath string
+	id           int
+	fileLocation string
+	ttl          time.Duration
 }
 
-func (c *Client) downloader(sourcesChan chan result) {
-	var sameTimeLoadersLimit = 10
-	c.workingLoaders = make(map[int]*fileState)
-	c.capacitor = make(chan struct{}, sameTimeLoadersLimit)
-
-	for res := range sourcesChan {
-		log.Print(c.loadersInfo())
-		log.Printf("adding loader to queue: [%d] %s", res.song.ID, res.song.Permalink)
-
-		c.editMessage(&res.tmpMsg,
-			c.getDict(&res.msg).MustLocalize(processFetching))
-
-		c.capacitor <- struct{}{}
-		go c.download(res)
+func (c *Client) downloader() {
+	for res := range c.results {
+		go c.loadPerUser(res)
 	}
 }
 
-func (c *Client) download(res result) {
-	var pool = c.workingLoaders
-
-	state := new(fileState)
-	if st, ok := pool[res.song.ID]; ok {
-		// work for this song already exist, taking their state
-		state = st
+func (c *Client) loadPerUser(res result) {
+	var uid int64
+	if res.msg.From != nil {
+		uid = int64(res.msg.From.ID)
 	} else {
-		pool[res.song.ID] = state
+		uid = res.msg.Chat.ID
+	}
+	user, alreadyActive := c.usersLoading[uid]
+	if !alreadyActive {
+		user = &sync.WaitGroup{}
+		c.usersLoading[uid] = user
 	}
 
-	state.active++
-	state.mu.Lock()
+	// first waiting if user already doing something
+	if alreadyActive {
+		log.Println("user already active, waiting")
+		c.editMessage(&res.tmpMsg,
+			c.getDict(&res.msg).MustLocalize(processQueue))
+		user.Wait()
+	}
+
+	log.Print(c.loadersInfo())
+	log.Printf("adding song from [%d] to queue: [%d] %s", uid, res.song.ID, res.song.Permalink)
+	c.capacitor <- struct{}{}
+
+	c.editMessage(&res.tmpMsg,
+		c.getDict(&res.msg).MustLocalize(processFetching))
+
+	log.Printf("starting new load per user [%d]", uid)
+	user.Add(1)
+	c.download(res, uid)
+}
+
+func (c *Client) download(res result, uid int64) {
+	// check if song already in cache
+	info, cached := c.cache[res.song.ID]
+	if !cached {
+		// if no - add to cache
+		info = &fileInfo{
+			cacheContainer: &c.cache,
+			id:             res.song.ID,
+			c:              *sync.NewCond(&sync.RWMutex{}),
+			ttl:            c.fileExpiration,
+		}
+		c.cache[res.song.ID] = info
+	}
+
+	info.c.L.Lock()
 
 	var songPath string
 
-	if state.filePath == "" {
-		r := c.loadAndPrepareSong(res)
+	if cached {
+		if info.fileLocation == "" {
+			info.c.Wait()
+		}
+		songPath = info.fileLocation
+		log.Printf("trying to get from cache: [%d] %s\n", res.song.ID, res.song.Permalink)
+	}
 
-		// can be empty
-		songPath = r
-	} else {
-		songPath = state.filePath
+	// not cached, need to download and process
+	if songPath == "" {
+		// can return zero if error occurred
+		songPath = c.loadAndPrepareSong(res)
 	}
 
 	if songPath != "" {
-		c.editMessage(&res.tmpMsg,
-			c.getDict(&res.msg).MustLocalize(processUploading))
-
-		audioMsg := tgbotapi.NewAudioUpload(res.msg.Chat.ID, songPath)
-		audioMsg.Title = res.song.Title
-		audioMsg.Performer = res.song.Author
-		audioMsg.Duration = int(res.song.Duration.Seconds())
-		audioMsg.ReplyToMessageID = res.msg.MessageID
-
-		if _, err := c.bot.Send(audioMsg); err != nil {
-			log.Printf("can't send song to user: %s\n", err)
-			c.sendMessage(&res.msg, c.getDict(&res.msg).MustLocalize(errUndefined(err)), true)
-		}
-
-		c.deleteMessage(&res.tmpMsg)
-
-		log.Printf("done with [%d] %s", res.song.ID, res.song.Permalink)
-
-		state.filePath = songPath
+		c.sendSongToUser(res, songPath)
+		log.Printf("done with [%d] %s\n", res.song.ID, res.song.Permalink)
+		info.fileLocation = songPath
 	}
 
-	state.active--
-
-	state.mu.Unlock()
-	<-c.capacitor
-
-	// no one waiting with same filename, removing file and record from pool
-	if state.active < 1 {
-		_ = os.Remove(songPath)
-		delete(pool, res.song.ID)
+	info.c.L.Unlock() // unlocking this file
+	info.c.Signal()   // telling others song is available
+	user, ok := c.usersLoading[uid]
+	if ok {
+		user.Done()
 	}
+	<-c.capacitor // telling capacitor we done
+
+	c.removeWhenExpire(info) // scheduling delete from cache and file system
 }
 
 func (c *Client) loadAndPrepareSong(res result) string {
@@ -109,8 +124,29 @@ func (c *Client) loadAndPrepareSong(res result) string {
 	if fileStats.Size() > (49 * 1024 * 1024) {
 		log.Printf("file exceed 50mb\n")
 		c.sendMessage(&res.msg, c.getDict(&res.msg).MustLocalize(errSizeLimit), true)
+		// until i find a way to send large files
+		_ = os.Remove(songPath)
 		return ""
 	}
 
 	return songPath
+}
+
+func (c *Client) sendSongToUser(res result, songPath string) {
+	// tell user we good
+	c.editMessage(&res.tmpMsg,
+		c.getDict(&res.msg).MustLocalize(processUploading))
+
+	audioMsg := tgbotapi.NewAudioUpload(res.msg.Chat.ID, songPath)
+	audioMsg.Title = res.song.Title
+	audioMsg.Performer = res.song.Author
+	audioMsg.Duration = int(res.song.Duration.Seconds())
+	audioMsg.ReplyToMessageID = res.msg.MessageID
+
+	if _, err := c.bot.Send(audioMsg); err != nil {
+		log.Printf("can't send song to user: %s\n", err)
+		c.sendMessage(&res.msg, c.getDict(&res.msg).MustLocalize(errUndefined(err)), true)
+	}
+
+	c.deleteMessage(&res.tmpMsg)
 }

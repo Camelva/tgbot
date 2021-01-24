@@ -6,6 +6,9 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"log"
+	"os"
+	"sync"
+	"time"
 )
 
 type Client struct {
@@ -13,19 +16,69 @@ type Client struct {
 	resp   *i18n.Bundle
 	loader *soundcloader.Client
 
-	workingLoaders map[int]*fileState
-	capacitor      chan struct{}
+	ownerID        int
+	fileExpiration time.Duration
 
-	ownerID int
-	debug   bool
+	loadersLimit int
+	usersLoading map[int64]*sync.WaitGroup
+	cache        map[int]*fileInfo
+	capacitor    chan struct{}
+
+	results chan result
+
+	shutdown chan os.Signal
+	done     chan bool
+
+	debug bool
 }
 
-func NewClient(b *tgbotapi.BotAPI, sl *soundcloader.Client, resp *i18n.Bundle) *Client {
-	return &Client{
-		bot:    b,
-		loader: sl,
-		resp:   resp,
+type ClientConfig struct {
+	b    *tgbotapi.BotAPI
+	scdl *soundcloader.Client
+	dict *i18n.Bundle
+
+	ownerID        int
+	loadersLimit   int
+	fileExpiration time.Duration
+	debug          bool
+}
+
+func NewClient(conf ClientConfig) (*Client, error) {
+	if conf.b == nil {
+		return nil, fmt.Errorf("need bot instance")
 	}
+	if conf.dict == nil {
+		return nil, fmt.Errorf("need translation bundle")
+	}
+
+	if conf.scdl == nil {
+		conf.scdl = soundcloader.DefaultClient
+	}
+	if conf.loadersLimit == 0 {
+		conf.loadersLimit = 10
+	}
+	if conf.fileExpiration == 0 {
+		conf.fileExpiration = time.Hour
+	}
+
+	c := Client{
+		bot:            conf.b,
+		resp:           conf.dict,
+		loader:         conf.scdl,
+		ownerID:        conf.ownerID,
+		loadersLimit:   conf.loadersLimit,
+		fileExpiration: conf.fileExpiration,
+	}
+
+	c.usersLoading = make(map[int64]*sync.WaitGroup)
+	c.capacitor = make(chan struct{}, c.loadersLimit)
+	c.cache = make(map[int]*fileInfo)
+	c.results = make(chan result)
+
+	c.shutdown = make(chan os.Signal, 1)
+	c.done = make(chan bool, 1)
+
+	return &c, nil
 }
 
 func (c *Client) SetOwner(id int) {
@@ -101,11 +154,54 @@ func (c *Client) getDict(msg *tgbotapi.Message) *i18n.Localizer {
 }
 
 func (c *Client) loadersInfo() string {
-	keys := make([]int, 0, len(c.workingLoaders))
-	for k := range c.workingLoaders {
-		keys = append(keys, k)
-	}
+	//keys := make([]int, 0, len(c.workingLoaders))
+	//for k := range c.workingLoaders {
+	//	keys = append(keys, k)
+	//}
 	return fmt.Sprintf(
-		"\n#########\n# Active loaders amount: %d\n# Loaders: %v\n# Limit: %d\n#########\n",
-		len(c.capacitor), keys, cap(c.capacitor))
+		"\n#########\n# Active loaders amount: %d\n# Cached songs: %v\n# Limit: %d\n#########\n",
+		len(c.capacitor), len(c.cache), c.loadersLimit)
+}
+
+func (c *Client) exit() {
+	c.bot.StopReceivingUpdates()
+	log.Println("bot was turned off, finishing work...")
+	for {
+		if len(c.capacitor) > 0 || len(c.results) > 0 {
+			log.Printf("still have [%d] songs to download and [%d] messages to process, waiting..", len(c.capacitor), len(c.results))
+			time.Sleep(time.Second * 30)
+			continue
+		}
+		break
+	}
+	c.clearCache()
+	c.done <- true
+}
+
+func (c *Client) clearCache() {
+	for _, fi := range c.cache {
+		fi.remove()
+	}
+}
+
+func (c *Client) sentByOwner(msg *tgbotapi.Message) bool {
+	if msg.From == nil {
+		return false
+	}
+	if msg.From.ID != c.ownerID {
+		return false
+	}
+	return true
+}
+
+func (c *Client) removeWhenExpire(fi *fileInfo) {
+	if c.debug {
+		log.Printf("remove [%d] after %s", fi.id, fi.ttl)
+	}
+	time.AfterFunc(fi.ttl, fi.remove)
+}
+
+func (fi *fileInfo) remove() {
+	_ = os.Remove(fi.fileLocation)
+	delete(*fi.cacheContainer, fi.id)
 }
