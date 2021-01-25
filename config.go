@@ -11,7 +11,7 @@ type Config struct {
 	Telegram Telegram `yaml:"telegram"`
 	Mode     string   `yaml:"mode" envconfig:"MODE"`
 
-	Settings Settings `yaml:"settings"`
+	Settings Settings
 }
 
 type Settings struct {
@@ -27,9 +27,9 @@ type Telegram struct {
 
 func loadConfigs(envFile, configFile string) (cfg Config) {
 	// env variables always overwrite
-	readFile(envFile, &cfg)
+	readConfigFromFile("env", envFile, &cfg)
 	readEnv(&cfg)
-	readFile(configFile, &cfg)
+	readConfigFromFile("settings", configFile, &cfg)
 
 	if (cfg == Config{}) {
 		log.Fatal("config not loaded!")
@@ -40,22 +40,31 @@ func loadConfigs(envFile, configFile string) (cfg Config) {
 	return cfg
 }
 
-func readFile(fileName string, cfg *Config) {
-	data, err := ioutil.ReadFile(fileName)
-	if err != nil {
-		log.Println("can't read config file")
-	}
-
-	if err := yaml.Unmarshal(data, cfg); err != nil {
-		log.Println("can't decode config file")
-	}
-	return
-}
-
 func readEnv(cfg *Config) {
 	err := envconfig.Process("", cfg)
 	if err != nil {
 		log.Println("can't read environment variables")
+	}
+	return
+}
+
+func readConfigFromFile(mode string, configFile string, cfg *Config) {
+	data, err := ioutil.ReadFile(configFile)
+	if err != nil {
+		log.Println("can't read config file")
+	}
+
+	if mode == "env" {
+		if err := yaml.Unmarshal(data, cfg); err != nil {
+			log.Println("can't decode config file")
+		}
+	} else if mode == "settings" {
+		conf := new(Settings)
+
+		if err := yaml.Unmarshal(data, conf); err != nil {
+			log.Println("can't decode config file")
+		}
+		cfg.Settings = *conf
 	}
 	return
 }
