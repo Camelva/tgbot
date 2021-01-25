@@ -3,13 +3,20 @@ package main
 import (
 	"github.com/kelseyhightower/envconfig"
 	"gopkg.in/yaml.v2"
+	"io/ioutil"
 	"log"
-	"os"
 )
 
 type Config struct {
 	Telegram Telegram `yaml:"telegram"`
 	Mode     string   `yaml:"mode" envconfig:"MODE"`
+
+	Settings Settings `yaml:"settings"`
+}
+
+type Settings struct {
+	LoadersLimit int    `yaml:"loadersLimit"`
+	FileTTL      string `yaml:"fileTTL"`
 }
 
 type Telegram struct {
@@ -18,10 +25,11 @@ type Telegram struct {
 	OwnerID   int    `yaml:"ownerID" envconfig:"TELEGRAM_OWNER_ID"`
 }
 
-func loadConfig(file string) (cfg Config) {
+func loadConfigs(envFile, configFile string) (cfg Config) {
 	// env variables always overwrite
-	readFile(file, &cfg)
+	readFile(envFile, &cfg)
 	readEnv(&cfg)
+	readFile(configFile, &cfg)
 
 	if (cfg == Config{}) {
 		log.Fatal("config not loaded!")
@@ -33,15 +41,12 @@ func loadConfig(file string) (cfg Config) {
 }
 
 func readFile(fileName string, cfg *Config) {
-	f, err := os.Open(fileName)
+	data, err := ioutil.ReadFile(fileName)
 	if err != nil {
 		log.Println("can't read config file")
 	}
-	defer closeFile(f)
 
-	decoder := yaml.NewDecoder(f)
-	err = decoder.Decode(cfg)
-	if err != nil {
+	if err := yaml.Unmarshal(data, cfg); err != nil {
 		log.Println("can't decode config file")
 	}
 	return
@@ -55,10 +60,29 @@ func readEnv(cfg *Config) {
 	return
 }
 
-func closeFile(f *os.File) {
-	err := f.Close()
-
+func changeConfig(s Settings) error {
+	var conf = new(Settings)
+	data, err := ioutil.ReadFile("config.yml")
 	if err != nil {
-		log.Printf("error while closing file: %v\n", err)
+		return err
 	}
+	if err := yaml.Unmarshal(data, conf); err != nil {
+		return err
+	}
+
+	if s.FileTTL != "" {
+		conf.FileTTL = s.FileTTL
+	}
+	if s.LoadersLimit != 0 {
+		conf.LoadersLimit = s.LoadersLimit
+	}
+
+	res, err := yaml.Marshal(conf)
+	if err != nil {
+		return err
+	}
+	if err := ioutil.WriteFile("config.yml", res, 0755); err != nil {
+		return err
+	}
+	return nil
 }

@@ -18,19 +18,24 @@ type result struct {
 }
 
 func main() {
-	config := loadConfig("config.yml")
+	config := loadConfigs("env.yml", "config.yml")
 
 	bot, err := tgbotapi.NewBotAPI(config.Telegram.Token)
 	if err != nil {
 		log.Fatalf("cant init telegram bot: %s", err)
 	}
 
+	ttl, err := time.ParseDuration(config.Settings.FileTTL)
+	if err != nil {
+		ttl = time.Hour
+	}
+
 	c, err := NewClient(ClientConfig{
 		b:              bot,
 		dict:           getResponses(),
 		ownerID:        config.Telegram.OwnerID,
-		loadersLimit:   10,
-		fileExpiration: time.Hour,
+		loadersLimit:   config.Settings.LoadersLimit,
+		fileExpiration: ttl,
 	})
 
 	if err != nil {

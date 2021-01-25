@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/url"
 	"runtime"
+	"strconv"
 	"unicode/utf16"
 )
 
@@ -119,6 +120,25 @@ func (c *Client) adminCommand(msg *tgbotapi.Message) (ok bool) {
 		return true
 	case "gr":
 		c.sendMessage(msg, fmt.Sprintf("Goroutines number: %d", runtime.NumGoroutine()), true)
+		return true
+	case "setTTL":
+		i := msg.CommandArguments()
+		if err := changeConfig(Settings{FileTTL: i}); err != nil {
+			c.sendMessage(msg, fmt.Sprintf("can't apply changes: %s", err), true)
+			return true
+		}
+		c.sendMessage(msg, "TTL changed!", true)
+		return true
+	case "setLimit":
+		i, err := strconv.Atoi(msg.CommandArguments())
+		if err != nil {
+			i = 10
+		}
+		if err := changeConfig(Settings{LoadersLimit: i}); err != nil {
+			c.sendMessage(msg, fmt.Sprintf("can't apply changes: %s", err), true)
+			return true
+		}
+		c.sendMessage(msg, "Limit changed!", true)
 		return true
 	//case "memorystats":
 	//	c.sendMessage(msg, "hey", true)

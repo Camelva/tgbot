@@ -3,12 +3,12 @@
 # IDE' files
 .idea
 
-# config file
-config.yml
-
 # results of code execution
 output
 out
 
 # any binaries
 *.exe
+
+# tokens
+env.yml
