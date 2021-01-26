@@ -8,7 +8,6 @@ import (
 	"github.com/rifflock/lfshook"
 	"github.com/sirupsen/logrus"
 	"os"
-	"sync"
 	"time"
 )
 
@@ -21,7 +20,7 @@ type Client struct {
 	fileExpiration time.Duration
 
 	loadersLimit int
-	usersLoading map[int64]*sync.WaitGroup
+	users        map[int64]chan result
 	cache        map[int]*fileInfo
 	capacitor    chan struct{}
 
@@ -64,7 +63,7 @@ func NewClient(conf ClientConfig) (*Client, error) {
 		conf.fileExpiration = time.Hour
 	}
 
-	logFile := fmt.Sprintf("%s.log", time.Now().Format("2006-01-02T15:04"))
+	logFile := fmt.Sprintf("%s.log", time.Now().Format("2006-01-02 15-04"))
 
 	l := logrus.New()
 	l.Hooks.Add(lfshook.NewHook(logFile, &logrus.TextFormatter{}))
@@ -82,7 +81,8 @@ func NewClient(conf ClientConfig) (*Client, error) {
 		fileExpiration: conf.fileExpiration,
 	}
 
-	c.usersLoading = make(map[int64]*sync.WaitGroup)
+	//c.usersLoading = make(map[int64]*sync.WaitGroup)
+	c.users = make(map[int64]chan result)
 	c.capacitor = make(chan struct{}, c.loadersLimit)
 	c.cache = make(map[int]*fileInfo)
 	c.results = make(chan result)
@@ -186,14 +186,14 @@ func (c *Client) loadersInfo() string {
 func (c *Client) exit() {
 	c.bot.StopReceivingUpdates()
 	c.log.WithFields(logrus.Fields{
-		"usersWaiting": c.usersLoading,
+		"usersWaiting": c.users,
 	}).Info("bot was turned off, finishing work..")
 	for {
 		if len(c.capacitor) > 0 || len(c.results) > 0 {
 			c.log.WithFields(logrus.Fields{
 				"songs":       len(c.capacitor),
 				"messages":    len(c.results),
-				"userWaiting": len(c.usersLoading),
+				"userWaiting": len(c.users),
 			}).Info("work to finish")
 			time.Sleep(time.Second * 30)
 			continue
@@ -218,6 +218,14 @@ func (c *Client) sentByOwner(msg *tgbotapi.Message) bool {
 		return false
 	}
 	return true
+}
+
+func (c *Client) sendLogs() error {
+	if _, err := c.bot.Send(tgbotapi.NewDocumentUpload(int64(c.ownerID), c.logFile)); err != nil {
+		logrus.WithError(err).Error("can't send message with logs to owner")
+		return err
+	}
+	return nil
 }
 
 func (c *Client) removeWhenExpire(fi *fileInfo) {

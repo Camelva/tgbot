@@ -19,7 +19,7 @@ Use /help for additional info"""
 [process]
 Start = """Please wait, checking song availability.."""
 
-Queue = """Process your previous songs.."""
+Queue = """Processing your previous songs.."""
 
 Fetching = """Fetching song from soundcloud.."""
 

@@ -140,12 +140,17 @@ func (c *Client) adminCommand(msg *tgbotapi.Message) (ok bool) {
 		}
 		c.sendMessage(msg, "Limit changed!", true)
 		return true
-	//case "memorystats":
-	//	c.sendMessage(msg, "hey", true)
-	//	return true
+	case "logs":
+		if err := c.sendLogs(); err != nil {
+			c.sendMessage(msg, fmt.Sprintf("can't send logs: %v", err), true)
+		}
+		return true
 	case "stop":
 		c.exit()
 		c.sendMessage(msg, "Done!", true)
+		if err := c.sendLogs(); err != nil {
+			c.sendMessage(msg, fmt.Sprintf("can't send logs: %v", err), true)
+		}
 		return true
 	}
 	return false

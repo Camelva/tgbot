@@ -71,9 +71,7 @@ func main() {
 
 	<-c.done
 	c.log.Info("shutting down and sending logs..")
-	if _, err := c.bot.Send(tgbotapi.NewDocumentUpload(int64(c.ownerID), c.logFile)); err != nil {
-		logrus.WithError(err).Error("can't send message with logs to owner")
-	}
+	_ = c.sendLogs()
 }
 
 func getUsageStats() string {
