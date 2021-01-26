@@ -2,7 +2,7 @@ package main
 
 import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"log"
+	"github.com/sirupsen/logrus"
 	"os"
 	"sync"
 	"time"
@@ -19,6 +19,10 @@ type fileInfo struct {
 
 func (c *Client) downloader() {
 	for res := range c.results {
+		c.log.WithFields(logrus.Fields{
+			"id":   res.song.ID,
+			"link": res.song.Permalink,
+		}).Trace("got new result to load")
 		go c.loadPerUser(res)
 	}
 }
@@ -30,36 +34,52 @@ func (c *Client) loadPerUser(res result) {
 	} else {
 		uid = res.msg.Chat.ID
 	}
+
+	userLog := c.log.WithField("userID", uid)
+
 	user, alreadyActive := c.usersLoading[uid]
 	if !alreadyActive {
+		userLog.Trace("user not active yet, adding..")
 		user = &sync.WaitGroup{}
 		c.usersLoading[uid] = user
 	}
 
 	// first waiting if user already doing something
 	if alreadyActive {
-		log.Println("user already active, waiting")
+		userLog.Trace("user already active, waiting..")
 		c.editMessage(&res.tmpMsg,
 			c.getDict(&res.msg).MustLocalize(processQueue))
 		user.Wait()
+		userLog.Trace("user no more active, working..")
 	}
 
-	log.Print(c.loadersInfo())
-	log.Printf("adding song from [%d] to queue: [%d] %s", uid, res.song.ID, res.song.Permalink)
+	c.log.Trace(c.loadersInfo())
+	songLog := userLog.WithFields(logrus.Fields{
+		"id":   res.song.ID,
+		"link": res.song.Permalink,
+	})
+
+	songLog.Trace("adding song to queue, waiting..")
 	c.capacitor <- struct{}{}
+	songLog.Trace("queue is open, working..")
 
 	c.editMessage(&res.tmpMsg,
 		c.getDict(&res.msg).MustLocalize(processFetching))
 
-	log.Printf("starting new load per user [%d]", uid)
 	user.Add(1)
 	c.download(res, uid)
 }
 
 func (c *Client) download(res result, uid int64) {
+	songLog := c.log.WithFields(logrus.Fields{
+		"userID": uid,
+		"id":     res.song.ID,
+		"link":   res.song.Permalink,
+	})
 	// check if song already in cache
 	info, cached := c.cache[res.song.ID]
 	if !cached {
+		songLog.Trace("not in cache, creating record..")
 		// if no - add to cache
 		info = &fileInfo{
 			cacheContainer: &c.cache,
@@ -70,61 +90,81 @@ func (c *Client) download(res result, uid int64) {
 		c.cache[res.song.ID] = info
 	}
 
+	songLog.Trace("locking this file..")
 	info.c.L.Lock()
+	songLog.Trace("file locked for us, working..")
 
 	var songPath string
 
 	if cached {
 		if info.fileLocation == "" {
+			songLog.Trace("file cached, but location is still empty, waiting")
 			info.c.Wait()
+			songLog.Trace("continue work with file..")
 		}
 		songPath = info.fileLocation
-		log.Printf("trying to get from cache: [%d] %s\n", res.song.ID, res.song.Permalink)
+		songLog.Trace("getting song from cache")
 	}
 
 	// not cached, need to download and process
 	if songPath == "" {
 		// can return zero if error occurred
+		songLog.Trace("not cached, need to download..")
 		songPath = c.loadAndPrepareSong(res)
 	}
 
 	if songPath != "" {
+		songLog.Trace("trying to send song to user..")
 		c.sendSongToUser(res, songPath)
-		log.Printf("done with [%d] %s\n", res.song.ID, res.song.Permalink)
+		songLog.Info("done with this song")
 		info.fileLocation = songPath
 	}
 
+	songLog.Trace("unlocking file..")
 	info.c.L.Unlock() // unlocking this file
-	info.c.Signal()   // telling others song is available
+
+	songLog.Trace("telling others it is available now..")
+	info.c.Signal() // telling others song is available
+
 	user, ok := c.usersLoading[uid]
 	if ok {
+		songLog.Trace("allowing user to load next song..")
 		user.Done()
 	}
+	songLog.Trace("freeing capacitor by one..")
 	<-c.capacitor // telling capacitor we done
 
 	c.removeWhenExpire(info) // scheduling delete from cache and file system
 }
 
 func (c *Client) loadAndPrepareSong(res result) string {
-	log.Printf("start getting: [%d] %s", res.song.ID, res.song.Permalink)
+	songLog := c.log.WithFields(logrus.Fields{
+		"id":   res.song.ID,
+		"link": res.song.Permalink,
+	})
 
+	songLog.Trace("getting song by using lib..")
 	songPath, err := res.song.GetNext()
 
 	if err != nil {
-		log.Printf("error with getting song: %s\n", err)
+		songLog.WithError(err).Error("can't get song")
 		c.sendMessage(&res.msg, c.getDict(&res.msg).MustLocalize(errUndefined(err)), true)
 		return ""
 	}
 	fileStats, err := os.Stat(songPath)
 	if err != nil {
-		log.Printf("error with reading file: %s\n", err)
+		songLog.WithFields(logrus.Fields{
+			"error": err,
+			"path":  songPath,
+		}).Error("can't read file..")
 		c.sendMessage(&res.msg, c.getDict(&res.msg).MustLocalize(errUndefined(err)), true)
 		return ""
 	}
 	if fileStats.Size() > (49 * 1024 * 1024) {
-		log.Printf("file exceed 50mb\n")
+		songLog.WithField("size", fileStats.Size()/1024/1024).Error("file >50mb")
 		c.sendMessage(&res.msg, c.getDict(&res.msg).MustLocalize(errSizeLimit), true)
-		// until i find a way to send large files
+
+		songLog.Trace("removing file..")
 		_ = os.Remove(songPath)
 		return ""
 	}
@@ -133,6 +173,11 @@ func (c *Client) loadAndPrepareSong(res result) string {
 }
 
 func (c *Client) sendSongToUser(res result, songPath string) {
+	songLog := c.log.WithFields(logrus.Fields{
+		"id":   res.song.ID,
+		"link": res.song.Permalink,
+	})
+	songLog.WithField("file", songPath).Trace("preparing file to loading..")
 	// tell user we good
 	c.editMessage(&res.tmpMsg,
 		c.getDict(&res.msg).MustLocalize(processUploading))
@@ -144,7 +189,7 @@ func (c *Client) sendSongToUser(res result, songPath string) {
 	audioMsg.ReplyToMessageID = res.msg.MessageID
 
 	if _, err := c.bot.Send(audioMsg); err != nil {
-		log.Printf("can't send song to user: %s\n", err)
+		songLog.WithError(err).Error("can't send song to user")
 		c.sendMessage(&res.msg, c.getDict(&res.msg).MustLocalize(errUndefined(err)), true)
 	}
 

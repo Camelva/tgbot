@@ -12,7 +12,7 @@ import (
 )
 
 func (c *Client) processMessage(msg *tgbotapi.Message) {
-	log.Println("Got new message")
+	c.log.WithField("text", msg.Text).Trace("Got new message")
 	reportMessage(msg)
 
 	if msg.IsCommand() {
@@ -78,7 +78,7 @@ func (c *Client) processMessage(msg *tgbotapi.Message) {
 }
 
 func (c *Client) processCmd(msg *tgbotapi.Message) {
-	log.Println("its command, responding..")
+	c.log.WithField("value", msg.Command()).Trace("its command, responding..")
 	if msg.Command() == "help" {
 		c.sendMessage(msg, c.getDict(msg).MustLocalize(cmdHelp), true)
 		return

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/camelva/soundcloader"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"log"
+	"github.com/sirupsen/logrus"
 	"os"
 	"os/signal"
 	"runtime"
@@ -22,7 +22,7 @@ func main() {
 
 	bot, err := tgbotapi.NewBotAPI(config.Telegram.Token)
 	if err != nil {
-		log.Fatalf("cant init telegram bot: %s", err)
+		logrus.WithError(err).Fatal("cant init telegram bot")
 	}
 
 	ttl, err := time.ParseDuration(config.Settings.FileTTL)
@@ -39,12 +39,12 @@ func main() {
 	})
 
 	if err != nil {
-		log.Fatalf("cant create client: %s", err)
+		logrus.WithError(err).Fatal("cant create client")
 	}
 
 	//c.SetDebug(true)
 
-	log.Printf("Authorized on account %s\n", bot.Self.UserName)
+	c.log.Info("Authorized on account ", bot.Self.UserName)
 
 	signal.Notify(c.shutdown, os.Interrupt, os.Kill)
 	go func() {
@@ -70,7 +70,10 @@ func main() {
 	}
 
 	<-c.done
-	log.Println("shutting down..")
+	c.log.Info("shutting down and sending logs..")
+	if _, err := c.bot.Send(tgbotapi.NewDocumentUpload(int64(c.ownerID), c.logFile)); err != nil {
+		logrus.WithError(err).Error("can't send message with logs to owner")
+	}
 }
 
 func getUsageStats() string {

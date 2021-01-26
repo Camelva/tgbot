@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/sirupsen/logrus"
 	"io/ioutil"
-	"log"
 	"net/http"
 )
 
@@ -105,16 +105,17 @@ func reportMessage(msg *tgbotapi.Message) int {
 }
 
 func sendReport(report tReport) (responseData interface{}) {
+	log := logrus.WithField("method", "telemetry.SendReport")
 	data, err := json.Marshal(report)
 	if err != nil {
-		log.Printf("[telemetry.SendReport]Marshal report: %s\n", err)
+		log.WithError(err).Error("can't marshal report")
 		return
 	}
 
 	var userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:73.0) Gecko/20100101 Firefox/73.0"
 	req, err := http.NewRequest("POST", tServer, bytes.NewReader(data))
 	if err != nil {
-		log.Printf("[telemetry.SendReport]New request: %s\n", err)
+		log.WithError(err).Error("can't make request")
 		return
 	}
 	req.Header.Set("User-Agent", userAgent)
@@ -122,24 +123,28 @@ func sendReport(report tReport) (responseData interface{}) {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Printf("[telemetry.SendReport]Post request: %s\n", err)
+		log.WithError(err).Error("can't send request")
 		return
 	}
 
 	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Printf("[telemetry.sendReport]Read response: %s\n", err)
+		log.WithError(err).Error("can't read response")
 		return
 	}
 	defer resp.Body.Close()
 	serverResponse := new(ServerResponse)
 
 	if err := json.Unmarshal(respBody, serverResponse); err != nil {
-		log.Printf("[telemetry.SendReport]Unmarhsal response: %s\n", err)
+		log.WithError(err).Error("can't unmarshal response")
+		return
 	}
 
 	if serverResponse.Status == http.StatusBadRequest {
-		log.Printf("[telemetry.SendReport]Server response: %s\n", serverResponse.StatusMessage)
+		logrus.WithFields(logrus.Fields{
+			"serverResponse": serverResponse,
+			"ourRequest":     resp.Request,
+		}).Error("error with sending report")
 		return
 	}
 
@@ -148,8 +153,9 @@ func sendReport(report tReport) (responseData interface{}) {
 	}
 
 	// unexpected response status
-	log.Printf(
-		"[telemetry.SendReport]Unexpeted response. Code: %d, message: %s\n",
-		serverResponse.Status, serverResponse.StatusMessage)
+	log.WithFields(logrus.Fields{
+		"code": serverResponse.Status,
+		"msg":  serverResponse.Data,
+	}).Error("unexpected response")
 	return
 }

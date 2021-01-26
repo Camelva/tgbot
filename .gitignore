@@ -12,3 +12,6 @@ out
 
 # tokens
 env.yml
+
+# logs
+*.log

@@ -5,7 +5,8 @@ import (
 	"github.com/camelva/soundcloader"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
-	"log"
+	"github.com/rifflock/lfshook"
+	"github.com/sirupsen/logrus"
 	"os"
 	"sync"
 	"time"
@@ -29,7 +30,9 @@ type Client struct {
 	shutdown chan os.Signal
 	done     chan bool
 
-	debug bool
+	debug   bool
+	log     *logrus.Logger
+	logFile string
 }
 
 type ClientConfig struct {
@@ -61,8 +64,17 @@ func NewClient(conf ClientConfig) (*Client, error) {
 		conf.fileExpiration = time.Hour
 	}
 
+	logFile := fmt.Sprintf("%s.log", time.Now().Format("2006-01-02T15:04"))
+
+	l := logrus.New()
+	l.Hooks.Add(lfshook.NewHook(logFile, &logrus.TextFormatter{}))
+
+	l.SetLevel(logrus.TraceLevel)
+
 	c := Client{
 		bot:            conf.b,
+		log:            l,
+		logFile:        logFile,
 		resp:           conf.dict,
 		loader:         conf.scdl,
 		ownerID:        conf.ownerID,
@@ -127,7 +139,11 @@ func (c *Client) editMessage(msg *tgbotapi.Message, text string) (message *tgbot
 }
 
 func (c *Client) returnNoURL(msg *tgbotapi.Message) {
-	log.Println("no url, exiting..")
+	c.log.WithFields(logrus.Fields{
+		"message": msg.Text,
+	}).Trace("no url here, exiting")
+
+	// report to user only if its private chat
 	if msg.Chat.IsPrivate() {
 		c.sendMessage(msg, c.getDict(msg).MustLocalize(errNotURL), true)
 	}
@@ -135,7 +151,11 @@ func (c *Client) returnNoURL(msg *tgbotapi.Message) {
 }
 
 func (c *Client) returnNoSCURL(msg *tgbotapi.Message) {
-	log.Println("no soundcloud url, exiting..")
+	c.log.WithFields(logrus.Fields{
+		"message": msg.Text,
+	}).Trace("got url, but not soundcloud")
+
+	// report to user only if its private chat
 	if msg.Chat.IsPrivate() {
 		c.sendMessage(msg, c.getDict(msg).MustLocalize(errNotSCURL), true)
 	}
@@ -165,10 +185,16 @@ func (c *Client) loadersInfo() string {
 
 func (c *Client) exit() {
 	c.bot.StopReceivingUpdates()
-	log.Println("bot was turned off, finishing work...")
+	c.log.WithFields(logrus.Fields{
+		"usersWaiting": c.usersLoading,
+	}).Info("bot was turned off, finishing work..")
 	for {
 		if len(c.capacitor) > 0 || len(c.results) > 0 {
-			log.Printf("still have [%d] songs to download and [%d] messages to process, waiting..", len(c.capacitor), len(c.results))
+			c.log.WithFields(logrus.Fields{
+				"songs":       len(c.capacitor),
+				"messages":    len(c.results),
+				"userWaiting": len(c.usersLoading),
+			}).Info("work to finish")
 			time.Sleep(time.Second * 30)
 			continue
 		}
@@ -195,9 +221,11 @@ func (c *Client) sentByOwner(msg *tgbotapi.Message) bool {
 }
 
 func (c *Client) removeWhenExpire(fi *fileInfo) {
-	if c.debug {
-		log.Printf("remove [%d] after %s", fi.id, fi.ttl)
-	}
+	c.log.WithFields(logrus.Fields{
+		"id":  fi.id,
+		"ttl": fi.ttl,
+	}).Debug("scheduling file remove")
+
 	time.AfterFunc(fi.ttl, fi.remove)
 }
 
