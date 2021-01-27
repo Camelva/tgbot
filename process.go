@@ -12,6 +12,11 @@ import (
 )
 
 func (c *Client) processMessage(msg *tgbotapi.Message) {
+	// if its sticker or so on
+	if msg.Text == "" {
+		return
+	}
+
 	c.log.WithField("text", msg.Text).Trace("Got new message")
 	reportMessage(msg)
 
