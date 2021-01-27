@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/camelva/soundcloader"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"log"
 	"net/url"
 	"runtime"
 	"strconv"
@@ -68,11 +67,12 @@ func (c *Client) processMessage(msg *tgbotapi.Message) {
 
 	song, err := c.loader.GetURL(scURL)
 	if err != nil {
+		scURLLog := c.log.WithField("scURL", scURL.String())
 		if err == soundcloader.NotSong {
-			log.Println("not song url, exiting..")
-			c.editMessage(msg, c.getDict(msg).MustLocalize(errUnsupportedFormat))
+			scURLLog.Info("not song url, exiting..")
+			c.editMessage(tmpMsg, c.getDict(msg).MustLocalize(errUnsupportedFormat))
 		} else {
-			log.Printf("can't get url: %s | Error: %s", scURL.String(), err)
+			scURLLog.WithError(err).Error("can't get url")
 			c.editMessage(tmpMsg, c.getDict(msg).MustLocalize(errUnavailableSong))
 		}
 		return
@@ -83,7 +83,7 @@ func (c *Client) processMessage(msg *tgbotapi.Message) {
 }
 
 func (c *Client) processCmd(msg *tgbotapi.Message) {
-	c.log.WithField("value", msg.Command()).Trace("its command, responding..")
+	c.log.WithField("cmd", msg.Command()).Trace("its command, responding..")
 	if msg.Command() == "help" {
 		c.sendMessage(msg, c.getDict(msg).MustLocalize(cmdHelp), true)
 		return

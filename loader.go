@@ -229,7 +229,7 @@ func (c *Client) downloader() {
 				)
 				return
 			}
-			c.editMessage(&res.msg, c.getDict(&res.msg).MustLocalize(processQueue))
+			c.editMessage(&res.tmpMsg, c.getDict(&res.msg).MustLocalize(processQueue))
 			userQueue <- res
 
 			continue
@@ -281,7 +281,7 @@ func (c *Client) _load(res result) {
 		"link": res.song.Permalink,
 	})
 
-	c.editMessage(&res.msg, c.getDict(&res.msg).MustLocalize(processFetching))
+	c.editMessage(&res.tmpMsg, c.getDict(&res.msg).MustLocalize(processFetching))
 
 	// check if song already in cache
 	info, cached := c.cache[res.song.ID]
