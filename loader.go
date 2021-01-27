@@ -394,6 +394,8 @@ func (c *Client) _sendSongToUser(res result, songPath string) {
 	audioMsg.Duration = int(res.song.Duration.Seconds())
 	audioMsg.ReplyToMessageID = res.msg.MessageID
 
+	audioMsg.Caption = "@scdl_info"
+
 	if _, err := c.bot.Send(audioMsg); err != nil {
 		songLog.WithError(err).Error("can't send song to user")
 		c.sendMessage(&res.msg, c.getDict(&res.msg).MustLocalize(errUndefined(err)), true)
