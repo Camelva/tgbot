@@ -327,6 +327,8 @@ func (c *Client) _load(res result) {
 		info.fileLocation = songPath
 	}
 
+	c.deleteMessage(&res.tmpMsg)
+
 	songLog.Trace("unlocking file..")
 	info.c.L.Unlock() // unlocking this file
 
@@ -396,6 +398,4 @@ func (c *Client) _sendSongToUser(res result, songPath string) {
 		songLog.WithError(err).Error("can't send song to user")
 		c.sendMessage(&res.msg, c.getDict(&res.msg).MustLocalize(errUndefined(err)), true)
 	}
-
-	c.deleteMessage(&res.tmpMsg)
 }

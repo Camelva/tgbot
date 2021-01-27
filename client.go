@@ -66,7 +66,7 @@ func NewClient(conf ClientConfig) (*Client, error) {
 	logFile := fmt.Sprintf("%s.log", time.Now().Format("2006-01-02 15-04"))
 
 	l := logrus.New()
-	l.Hooks.Add(lfshook.NewHook(logFile, &logrus.TextFormatter{}))
+	l.Hooks.Add(lfshook.NewHook(logFile, &logrus.JSONFormatter{}))
 
 	l.SetLevel(logrus.TraceLevel)
 
