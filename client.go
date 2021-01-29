@@ -8,6 +8,7 @@ import (
 	"github.com/rifflock/lfshook"
 	"github.com/sirupsen/logrus"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -19,10 +20,11 @@ type Client struct {
 	ownerID        int
 	fileExpiration time.Duration
 
-	loadersLimit int
-	users        map[int64]chan result
-	cache        map[int]*fileInfo
-	capacitor    chan struct{}
+	users map[int64]chan result
+	cache map[int]*fileInfo
+	//capacitor    chan struct{}
+
+	capacitor *Capacitor
 
 	results chan result
 
@@ -77,13 +79,18 @@ func NewClient(conf ClientConfig) (*Client, error) {
 		resp:           conf.dict,
 		loader:         conf.scdl,
 		ownerID:        conf.ownerID,
-		loadersLimit:   conf.loadersLimit,
 		fileExpiration: conf.fileExpiration,
 	}
 
 	//c.usersLoading = make(map[int64]*sync.WaitGroup)
 	c.users = make(map[int64]chan result)
-	c.capacitor = make(chan struct{}, c.loadersLimit)
+
+	c.capacitor = &Capacitor{
+		cond:      *sync.NewCond(&sync.Mutex{}),
+		container: make(map[int]string),
+		limit:     conf.loadersLimit,
+	}
+
 	c.cache = make(map[int]*fileInfo)
 	c.results = make(chan result)
 
@@ -179,21 +186,19 @@ func (c *Client) loadersInfo() string {
 	//	keys = append(keys, k)
 	//}
 	return fmt.Sprintf(
-		"\n#########\n# Active loaders amount: %d\n# Cached songs: %v\n# Limit: %d\n#########\n",
-		len(c.capacitor), len(c.cache), c.loadersLimit)
+		"\n#########\n# Active loaders amount: %d\n# Cached songs: %v\n# Limit: %d\n# Loading now: %s\n#########\n",
+		c.capacitor.Len(), len(c.cache), c.capacitor.Max(), c.capacitor)
 }
 
 func (c *Client) exit() {
 	c.bot.StopReceivingUpdates()
-	c.log.WithFields(logrus.Fields{
-		"usersWaiting": c.users,
-	}).Info("bot was turned off, finishing work..")
+	c.log.Info("bot was turned off, finishing work..")
 	for {
-		if len(c.capacitor) > 0 || len(c.results) > 0 {
+		if c.capacitor.Len() > 0 || len(c.results) > 0 {
 			c.log.WithFields(logrus.Fields{
-				"songs":       len(c.capacitor),
+				"songsAmount": c.capacitor.Len(),
+				"songs":       c.capacitor,
 				"messages":    len(c.results),
-				"userWaiting": len(c.users),
 			}).Info("work to finish")
 			time.Sleep(time.Second * 30)
 			continue

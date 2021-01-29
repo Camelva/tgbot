@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"sync"
 	"time"
 )
 
@@ -72,6 +73,46 @@ func main() {
 	<-c.done
 	c.log.Info("shutting down and sending logs..")
 	_ = c.sendLogs()
+}
+
+type Capacitor struct {
+	cond      sync.Cond
+	container map[int]string
+	limit     int
+}
+
+func (ca *Capacitor) Add(id int, permalink string) {
+	ca.cond.L.Lock()
+	defer ca.cond.L.Unlock()
+
+	for len(ca.container) >= ca.limit {
+		ca.cond.Wait()
+	}
+
+	ca.container[id] = permalink
+}
+
+func (ca *Capacitor) Remove(id int) {
+	ca.cond.L.Lock()
+	defer ca.cond.L.Unlock()
+
+	if len(ca.container) >= ca.limit {
+		// means Add() probably waiting, let them know
+		ca.cond.Signal()
+	}
+	delete(ca.container, id)
+}
+
+func (ca *Capacitor) Len() int {
+	return len(ca.container)
+}
+
+func (ca *Capacitor) Max() int {
+	return ca.limit
+}
+
+func (ca *Capacitor) String() string {
+	return fmt.Sprint(ca.container)
 }
 
 func getUsageStats() string {
