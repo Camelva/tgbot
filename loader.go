@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/camelva/soundcloader"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/sirupsen/logrus"
 	"os"
@@ -120,16 +121,29 @@ func (c *Client) _load(res result) {
 	info.c.L.Lock()
 	songLog.Trace("file locked only for us, working..")
 
+	defer func() {
+		// regardless of result:
+		c.deleteMessage(&res.tmpMsg) // delete temp message
+
+		songLog.Trace("unlocking file..")
+		info.c.L.Unlock() // unlock this file
+
+		//songLog.Trace("telling others it is available now..")
+		//info.c.Signal() // tell others this song is available
+
+		songLog.Trace("freeing capacitor by one..")
+		c.capacitor.Remove(res.song.ID) // free space for next song
+
+		c.removeWhenExpire(info) // scheduling delete from cache and file system
+	}()
+
 	var songPath string
 
-	if cached {
-		if info.fileLocation == "" {
-			songLog.Trace("file cached, but location is still empty, waiting")
-			info.c.Wait()
-			songLog.Trace("continue work with file..")
-		}
-		songPath = info.fileLocation
+	// because we locking mutex, situation when fileLocation field *yet* empty is impossible
+	// empty field from cache only means something went wrong earlier
+	if info.fileLocation != "" {
 		songLog.Trace("getting song from cache")
+		songPath = info.fileLocation
 	}
 
 	// not cached, need to download and process
@@ -139,26 +153,18 @@ func (c *Client) _load(res result) {
 		songPath = c._loadAndPrepareSong(res)
 	}
 
-	if songPath != "" {
-		songLog.Trace("trying to send song to user..")
-		c._sendSongToUser(res, songPath)
-		songLog.Info("done with this song")
-		info.fileLocation = songPath
+	if songPath == "" {
+		// means this song is unavailable
+		// remove entry from cache and return
+		delete(c.cache, res.song.ID)
+		return
 	}
 
-	c.deleteMessage(&res.tmpMsg)
+	songLog.Trace("trying to send song to user..")
+	c._sendSongToUser(res, songPath)
 
-	songLog.Trace("unlocking file..")
-	info.c.L.Unlock() // unlocking this file
-
-	songLog.Trace("telling others it is available now..")
-	info.c.Signal() // telling others song is available
-
-	songLog.Trace("freeing capacitor by one..")
-	//<-c.capacitor // telling capacitor we done
-	c.capacitor.Remove(res.song.ID)
-
-	c.removeWhenExpire(info) // scheduling delete from cache and file system
+	songLog.Info("done with this song")
+	info.fileLocation = songPath
 }
 
 func (c *Client) _loadAndPrepareSong(res result) string {
@@ -172,7 +178,13 @@ func (c *Client) _loadAndPrepareSong(res result) string {
 
 	if err != nil {
 		songLog.WithError(err).Error("can't get song")
-		c.sendMessage(&res.msg, c.getDict(&res.msg).MustLocalize(errUndefined(err)), true)
+
+		if err == soundcloader.EmptyStream {
+			c.sendMessage(&res.msg, c.getDict(&res.msg).MustLocalize(errUnavailableSong), true)
+		} else {
+			c.sendMessage(&res.msg, c.getDict(&res.msg).MustLocalize(errUndefined(err)), true)
+		}
+
 		return ""
 	}
 

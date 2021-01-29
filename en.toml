@@ -36,8 +36,8 @@ UnsupportedFormat = """I do not know how to work with playlists and other format
 
 UnsupportedService = """This service unsupported yet."""
 
-UnavailableSong = """Are you sure this song is available? Because i can't get it 😕.
-Make sure it is available and try again or contact developer for additional help"""
+UnavailableSong = """Seems like this song is unavailable for bot.
+Most likely because of regional restrictions and i can't bypass it by now"""
 
 SizeLimit = """Looks like this song weighs too much.
 Telegram limits uploading files size to 50mb and we can't avoid this limit."""
