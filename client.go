@@ -116,15 +116,15 @@ func (c *Client) SetDebug(b bool) {
 	c.debug = b
 }
 
-func (c *Client) deleteMessage(msg *tgbotapi.Message) {
+func deleteMessage(tgBot *tgbotapi.BotAPI, msg *tgbotapi.Message) {
 	msgToDelete := tgbotapi.NewDeleteMessage(msg.Chat.ID, msg.MessageID)
 
-	_, _ = c.bot.Send(msgToDelete)
+	_, _ = tgBot.Send(msgToDelete)
 }
 
-func (c *Client) send(obj tgbotapi.Chattable) (message *tgbotapi.Message) {
+func send(tgBot *tgbotapi.BotAPI, obj tgbotapi.Chattable) (message *tgbotapi.Message) {
 	for range make([]int, 2) {
-		sentMsg, err := c.bot.Send(obj)
+		sentMsg, err := tgBot.Send(obj)
 		if err != nil {
 			continue
 		}
@@ -133,49 +133,55 @@ func (c *Client) send(obj tgbotapi.Chattable) (message *tgbotapi.Message) {
 	return
 }
 
-func (c *Client) sendMessage(receivedMsg *tgbotapi.Message, text string, reply bool) (message *tgbotapi.Message) {
-	msgObj := tgbotapi.NewMessage(receivedMsg.Chat.ID, text)
-	if reply {
-		msgObj.ReplyToMessageID = receivedMsg.MessageID
+// by default reply is true
+func sendMessage(tgBot *tgbotapi.BotAPI, origin *tgbotapi.Message, text string, reply ...bool) *tgbotapi.Message {
+	msgObj := tgbotapi.NewMessage(origin.Chat.ID, text)
+	msgObj.ReplyToMessageID = origin.MessageID
+
+	if len(reply) > 0 {
+		if reply[0] == false {
+			msgObj.ReplyToMessageID = 0
+		}
 	}
+
 	msgObj.ParseMode = "HTML"
-	return c.send(msgObj)
+	return send(tgBot, msgObj)
 }
 
-func (c *Client) editMessage(msg *tgbotapi.Message, text string) (message *tgbotapi.Message) {
+func editMessage(tgBot *tgbotapi.BotAPI, msg *tgbotapi.Message, text string) *tgbotapi.Message {
 	msgObj := tgbotapi.NewEditMessageText(msg.Chat.ID, msg.MessageID, text)
-	return c.send(msgObj)
+	return send(tgBot, msgObj)
 }
 
-func (c *Client) returnNoURL(msg *tgbotapi.Message) {
+func replyNotURL(c *Client, msg *tgbotapi.Message) {
 	c.log.WithField("value", msg.Text).Trace("no url here, exiting")
 
 	// report to user only if its private chat
 	if msg.Chat.IsPrivate() {
-		c.sendMessage(msg, c.getDict(msg).MustLocalize(errNotURL), true)
+		sendMessage(c.bot, msg, getDict(c.resp, msg).MustLocalize(errNotURL))
 	}
 	return
 }
 
-func (c *Client) returnNoSCURL(msg *tgbotapi.Message) {
+func replyNotSC(c *Client, msg *tgbotapi.Message) {
 	c.log.WithField("value", msg.Text).Trace("not soundcloud URL")
 
 	// report to user only if its private chat
 	if msg.Chat.IsPrivate() {
-		c.sendMessage(msg, c.getDict(msg).MustLocalize(errNotSCURL), true)
+		sendMessage(c.bot, msg, getDict(c.resp, msg).MustLocalize(errNotSCURL))
 	}
 	return
 }
 
-func (c *Client) getDict(msg *tgbotapi.Message) *i18n.Localizer {
+func getDict(bundle *i18n.Bundle, msg *tgbotapi.Message) *i18n.Localizer {
 	if msg != nil {
 		if msg.From != nil {
 			if msg.From.LanguageCode != "" {
-				return i18n.NewLocalizer(c.resp, msg.From.LanguageCode)
+				return i18n.NewLocalizer(bundle, msg.From.LanguageCode)
 			}
 		}
 	}
-	return i18n.NewLocalizer(c.resp, "")
+	return i18n.NewLocalizer(bundle, "")
 }
 
 func (c *Client) loadersInfo() string {
@@ -227,8 +233,8 @@ func (c *Client) sendLogs() error {
 	return nil
 }
 
-func (c *Client) removeWhenExpire(fi *fileInfo) {
-	c.log.WithField("id", fi.id).Debug("scheduling file remove after %s", fi.ttl.String())
+func removeWhenExpire(fi *fileInfo, songLog *logrus.Entry) {
+	songLog.Debug("scheduling file remove after %s", fi.ttl.String())
 
 	time.AfterFunc(fi.ttl, fi.remove)
 }

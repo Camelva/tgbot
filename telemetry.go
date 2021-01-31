@@ -58,7 +58,7 @@ func (tMessage) method() string { return "newMessage" }
 //
 //func (tError) method() string { return "newError" }
 
-func reportMessage(msg *tgbotapi.Message) int {
+func reportMessage(msg *tgbotapi.Message, log *logrus.Logger) int {
 	var usr = tUser{}
 	var cht = tChat{}
 	if msg.From != nil {
@@ -91,7 +91,7 @@ func reportMessage(msg *tgbotapi.Message) int {
 		Method: method,
 		Args:   message,
 	}
-	if res := sendReport(report); res != nil {
+	if res := sendReport(report, log); res != nil {
 		// server return id of record 	or
 		// true if record already exist or
 		// false if problem occurred
@@ -104,18 +104,18 @@ func reportMessage(msg *tgbotapi.Message) int {
 	return 0
 }
 
-func sendReport(report tReport) (responseData interface{}) {
-	log := logrus.WithField("method", "telemetry.SendReport")
+func sendReport(report tReport, log *logrus.Logger) (responseData interface{}) {
+	logMethod := logrus.WithField("value", "telemetry.SendReport")
 	data, err := json.Marshal(report)
 	if err != nil {
-		log.WithError(err).Error("can't marshal report")
+		logMethod.WithError(err).Error("can't marshal report")
 		return
 	}
 
 	var userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:73.0) Gecko/20100101 Firefox/73.0"
 	req, err := http.NewRequest("POST", tServer, bytes.NewReader(data))
 	if err != nil {
-		log.WithError(err).Error("can't make request")
+		logMethod.WithError(err).Error("can't make request")
 		return
 	}
 	req.Header.Set("User-Agent", userAgent)
@@ -123,27 +123,28 @@ func sendReport(report tReport) (responseData interface{}) {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		log.WithError(err).Error("can't send request")
+		logMethod.WithError(err).Error("can't send request")
 		return
 	}
 
 	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.WithError(err).Error("can't read response")
+		logMethod.WithError(err).Error("can't read response")
 		return
 	}
 	defer resp.Body.Close()
 	serverResponse := new(ServerResponse)
 
 	if err := json.Unmarshal(respBody, serverResponse); err != nil {
-		log.WithError(err).Error("can't unmarshal response")
+		logMethod.WithError(err).Error("can't unmarshal response")
 		return
 	}
 
 	if serverResponse.Status == http.StatusBadRequest {
-		logrus.WithFields(logrus.Fields{
-			"serverResponse": serverResponse,
-			"ourRequest":     resp.Request,
+		reqBody, _ := ioutil.ReadAll(resp.Request.Body)
+		log.WithFields(logrus.Fields{
+			"error": serverResponse,
+			"value": string(reqBody),
 		}).Error("error with sending report")
 		return
 	}
@@ -154,8 +155,8 @@ func sendReport(report tReport) (responseData interface{}) {
 
 	// unexpected response status
 	log.WithFields(logrus.Fields{
-		"code": serverResponse.Status,
-		"msg":  serverResponse.Data,
+		"error": serverResponse.Status,
+		"value": serverResponse.Data,
 	}).Error("unexpected response")
 	return
 }

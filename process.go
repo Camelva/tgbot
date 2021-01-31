@@ -10,7 +10,7 @@ import (
 	"unicode/utf16"
 )
 
-func (c *Client) processMessage(msg *tgbotapi.Message) {
+func processMessage(c *Client, msg *tgbotapi.Message) {
 	// if its sticker or so on
 	if msg.Text == "" {
 		return
@@ -24,10 +24,10 @@ func (c *Client) processMessage(msg *tgbotapi.Message) {
 	}
 
 	c.log.WithField("value", msg.Text).WithField("userID", uid).Info("Got new message")
-	reportMessage(msg)
+	reportMessage(msg, c.log)
 
 	if msg.IsCommand() {
-		c.processCmd(msg)
+		processCmd(c, msg)
 		return
 	}
 
@@ -51,7 +51,7 @@ func (c *Client) processMessage(msg *tgbotapi.Message) {
 	}
 
 	if len(urlsFromMsg) < 1 {
-		c.returnNoURL(msg)
+		replyNotURL(c, msg)
 		return
 	}
 
@@ -65,22 +65,22 @@ func (c *Client) processMessage(msg *tgbotapi.Message) {
 	}
 
 	if scURL == nil {
-		c.returnNoURL(msg)
+		replyNotSC(c, msg)
 		return
 	}
 
 	// tell user we got their message
-	tmpMsg := c.sendMessage(msg, c.getDict(msg).MustLocalize(processStart), true)
+	tmpMsg := sendMessage(c.bot, msg, getDict(c.resp, msg).MustLocalize(processStart))
 
 	song, err := c.loader.GetURL(scURL)
 	if err != nil {
 		scURLLog := c.log.WithField("value", scURL.String())
 		if err == soundcloader.NotSong {
 			scURLLog.Info("not song url, exiting..")
-			c.editMessage(tmpMsg, c.getDict(msg).MustLocalize(errUnsupportedFormat))
+			editMessage(c.bot, tmpMsg, getDict(c.resp, msg).MustLocalize(errUnsupportedFormat))
 		} else {
 			scURLLog.WithError(err).Error("can't get url")
-			c.editMessage(tmpMsg, c.getDict(msg).MustLocalize(errUnavailableSong))
+			editMessage(c.bot, tmpMsg, getDict(c.resp, msg).MustLocalize(errUnavailableSong))
 		}
 		return
 	}
@@ -90,30 +90,31 @@ func (c *Client) processMessage(msg *tgbotapi.Message) {
 	return
 }
 
-func (c *Client) processCmd(msg *tgbotapi.Message) {
+func processCmd(c *Client, msg *tgbotapi.Message) {
 	c.log.WithField("value", msg.Command()).Trace("its command, responding..")
 	if msg.Command() == "help" {
-		c.sendMessage(msg, c.getDict(msg).MustLocalize(cmdHelp), true)
+		sendMessage(c.bot, msg, getDict(c.resp, msg).MustLocalize(cmdHelp))
 		return
 	}
 
 	if msg.Command() == "start" {
-		c.sendMessage(msg, c.getDict(msg).MustLocalize(cmdStart), true)
+		sendMessage(c.bot, msg, getDict(c.resp, msg).MustLocalize(cmdStart))
 		return
 	}
 
-	if c.adminCommand(msg) {
+	if adminCommand(c, msg) {
 		return
 	}
 
-	c.sendMessage(msg, c.getDict(msg).MustLocalize(cmdUndefined), true)
+	sendMessage(c.bot, msg, getDict(c.resp, msg).MustLocalize(cmdUndefined))
 	return
 }
 
-func (c *Client) adminCommand(msg *tgbotapi.Message) (ok bool) {
+func adminCommand(c *Client, msg *tgbotapi.Message) (ok bool) {
 	if !c.sentByOwner(msg) {
 		return false
 	}
+	ok = true
 
 	switch msg.Command() {
 	case "debug":
@@ -123,48 +124,48 @@ func (c *Client) adminCommand(msg *tgbotapi.Message) (ok bool) {
 		} else if d == "false" || d == "0" || d == "no" {
 			c.SetDebug(false)
 		}
-		c.sendMessage(msg, fmt.Sprintf("Debug = %t", c.debug), true)
-		return true
+		sendMessage(c.bot, msg, fmt.Sprintf("Debug = %t", c.debug))
+		return
 	case "stats":
-		c.sendMessage(msg, getUsageStats(), true)
-		return true
+		sendMessage(c.bot, msg, memoryStats())
+		return
 	case "queue":
-		c.sendMessage(msg, c.loadersInfo(), true)
-		return true
+		sendMessage(c.bot, msg, c.loadersInfo())
+		return
 	case "gr":
-		c.sendMessage(msg, fmt.Sprintf("Goroutines number: %d", runtime.NumGoroutine()), true)
-		return true
+		sendMessage(c.bot, msg, fmt.Sprintf("Goroutines number: %d", runtime.NumGoroutine()))
+		return
 	case "setTTL":
 		i := msg.CommandArguments()
 		if err := changeConfig(Settings{FileTTL: i}); err != nil {
-			c.sendMessage(msg, fmt.Sprintf("can't apply changes: %s", err), true)
-			return true
+			sendMessage(c.bot, msg, fmt.Sprintf("can't apply changes: %s", err))
+			return
 		}
-		c.sendMessage(msg, "TTL changed!", true)
-		return true
+		sendMessage(c.bot, msg, "TTL changed!")
+		return
 	case "setLimit":
 		i, err := strconv.Atoi(msg.CommandArguments())
 		if err != nil {
 			i = 10
 		}
 		if err := changeConfig(Settings{LoadersLimit: i}); err != nil {
-			c.sendMessage(msg, fmt.Sprintf("can't apply changes: %s", err), true)
-			return true
+			sendMessage(c.bot, msg, fmt.Sprintf("can't apply changes: %s", err))
+			return
 		}
-		c.sendMessage(msg, "Limit changed!", true)
-		return true
+		sendMessage(c.bot, msg, "Limit changed!")
+		return
 	case "logs":
 		if err := c.sendLogs(); err != nil {
-			c.sendMessage(msg, fmt.Sprintf("can't send logs: %v", err), true)
+			sendMessage(c.bot, msg, fmt.Sprintf("can't send logs: %v", err))
 		}
-		return true
+		return
 	case "stop":
 		c.exit()
-		c.sendMessage(msg, "Done!", true)
+		sendMessage(c.bot, msg, "Done, wait for logs file")
 		if err := c.sendLogs(); err != nil {
-			c.sendMessage(msg, fmt.Sprintf("can't send logs: %v", err), true)
+			sendMessage(c.bot, msg, fmt.Sprintf("can't send logs: %v", err))
 		}
-		return true
+		return
 	}
 	return false
 }

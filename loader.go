@@ -36,11 +36,11 @@ func (r *results) Add(c *Client, res result) {
 		if len(ch) >= r.limitPerUser {
 			// too much songs from same user
 			userLog.WithField("value", len(ch)).Error("user already sent too much songs")
-			c.sendMessage(&res.msg, "please wait for some of your previous songs to download and try again later", true)
+			sendMessage(c.bot, &res.msg, "please wait for some of your previous songs to download and try again later")
 			return
 		}
 		// telling user they need to wait for their previous songs finish
-		c.editMessage(&res.tmpMsg, c.getDict(&res.msg).MustLocalize(processQueue))
+		editMessage(c.bot, &res.tmpMsg, getDict(c.resp, &res.msg).MustLocalize(processQueue))
 		ch <- res
 		return
 	}
@@ -87,7 +87,14 @@ func userLoader(c *Client, userID int64, refreshRate time.Duration) {
 	for range tick.C {
 		res, ok := c.results.Get(userID, c.log)
 		if ok {
-			userLog.Debug("got new record for user")
+			songLog := userLog.WithFields(logrus.Fields{
+				"id":   res.song.ID,
+				"link": res.song.Permalink,
+			})
+			songLog.Debug("got new record for user")
+			//adding record to limiter, if already max - waiting for free space
+			c.capacitor.Add(res.song.ID, res.song.Permalink)
+			songLog.Debug("added to capacitor, start getting")
 			getSong(c, res)
 			continue
 		}
@@ -189,7 +196,7 @@ func getSong(c *Client, res result) {
 		"link": res.song.Permalink,
 	})
 
-	c.editMessage(&res.tmpMsg, c.getDict(&res.msg).MustLocalize(processFetching))
+	editMessage(c.bot, &res.tmpMsg, getDict(c.resp, &res.msg).MustLocalize(processFetching))
 
 	// check if song already in cache
 	info, cached := c.cache[res.song.ID]
@@ -211,7 +218,7 @@ func getSong(c *Client, res result) {
 
 	defer func() {
 		// regardless of result:
-		c.deleteMessage(&res.tmpMsg) // delete temp message
+		deleteMessage(c.bot, &res.tmpMsg) // delete temp message
 
 		songLog.Debug("unlocking file..")
 		info.c.L.Unlock() // unlock this file
@@ -222,7 +229,7 @@ func getSong(c *Client, res result) {
 		songLog.Debug("freeing capacitor by one..")
 		c.capacitor.Remove(res.song.ID) // free space for next song
 
-		c.removeWhenExpire(info) // scheduling delete from cache and file system
+		removeWhenExpire(info, songLog) // scheduling delete from cache and file system
 	}()
 
 	var songPath string
@@ -238,7 +245,7 @@ func getSong(c *Client, res result) {
 	if songPath == "" {
 		// can return zero if error occurred
 		songLog.Debug("not cached, need to download..")
-		songPath = c._loadAndPrepareSong(res, songLog)
+		songPath = loadAndPrepareSong(c, res, songLog)
 	}
 
 	if songPath == "" {
@@ -249,13 +256,13 @@ func getSong(c *Client, res result) {
 	}
 
 	songLog.Debug("trying to send song to user..")
-	c._sendSongToUser(res, songPath, songLog)
+	sendSongToUser(c, res, songPath, songLog)
 
 	songLog.Info("done with this song")
 	info.fileLocation = songPath
 }
 
-func (c *Client) _loadAndPrepareSong(res result, songLog *logrus.Entry) string {
+func loadAndPrepareSong(c *Client, res result, songLog *logrus.Entry) string {
 	songLog.Debug("getting song by using lib..")
 	songPath, err := res.song.GetNext()
 
@@ -263,9 +270,9 @@ func (c *Client) _loadAndPrepareSong(res result, songLog *logrus.Entry) string {
 		songLog.WithError(err).Error("can't get song")
 
 		if err == soundcloader.EmptyStream {
-			c.sendMessage(&res.msg, c.getDict(&res.msg).MustLocalize(errUnavailableSong), true)
+			sendMessage(c.bot, &res.msg, getDict(c.resp, &res.msg).MustLocalize(errUnavailableSong))
 		} else {
-			c.sendMessage(&res.msg, c.getDict(&res.msg).MustLocalize(errUndefined(err)), true)
+			sendMessage(c.bot, &res.msg, getDict(c.resp, &res.msg).MustLocalize(errUndefined(err)))
 		}
 
 		return ""
@@ -274,12 +281,12 @@ func (c *Client) _loadAndPrepareSong(res result, songLog *logrus.Entry) string {
 	fileStats, err := os.Stat(songPath)
 	if err != nil {
 		songLog.WithField("value", songPath).WithError(err).Error("can't read file..")
-		c.sendMessage(&res.msg, c.getDict(&res.msg).MustLocalize(errUndefined(err)), true)
+		sendMessage(c.bot, &res.msg, getDict(c.resp, &res.msg).MustLocalize(errUndefined(err)))
 		return ""
 	}
 	if fileStats.Size() > (49 * 1024 * 1024) {
 		songLog.WithField("value", fileStats.Size()/1024/1024).Error("file >50mb")
-		c.sendMessage(&res.msg, c.getDict(&res.msg).MustLocalize(errSizeLimit), true)
+		sendMessage(c.bot, &res.msg, getDict(c.resp, &res.msg).MustLocalize(errSizeLimit))
 
 		songLog.Debug("removing file..")
 		_ = os.Remove(songPath)
@@ -289,12 +296,11 @@ func (c *Client) _loadAndPrepareSong(res result, songLog *logrus.Entry) string {
 	return songPath
 }
 
-func (c *Client) _sendSongToUser(res result, songPath string, songLog *logrus.Entry) {
+func sendSongToUser(c *Client, res result, songPath string, songLog *logrus.Entry) {
 	songLog.WithField("value", songPath).Debug("preparing file to loading..")
 
 	// tell user we good
-	c.editMessage(&res.tmpMsg,
-		c.getDict(&res.msg).MustLocalize(processUploading))
+	editMessage(c.bot, &res.tmpMsg, getDict(c.resp, &res.msg).MustLocalize(processUploading))
 
 	audioMsg := tgbotapi.NewAudioUpload(res.msg.Chat.ID, songPath)
 	audioMsg.Title = res.song.Title
@@ -306,6 +312,6 @@ func (c *Client) _sendSongToUser(res result, songPath string, songLog *logrus.En
 
 	if _, err := c.bot.Send(audioMsg); err != nil {
 		songLog.WithError(err).Error("can't send song to user")
-		c.sendMessage(&res.msg, c.getDict(&res.msg).MustLocalize(errUndefined(err)), true)
+		sendMessage(c.bot, &res.msg, getDict(c.resp, &res.msg).MustLocalize(errUndefined(err)))
 	}
 }

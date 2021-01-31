@@ -63,9 +63,9 @@ func main() {
 
 	for update := range updates {
 		if update.Message != nil {
-			go c.processMessage(update.Message)
+			go processMessage(c, update.Message)
 		} else if update.ChannelPost != nil {
-			go c.processMessage(update.ChannelPost)
+			go processMessage(c, update.ChannelPost)
 		} else {
 			continue
 		}
@@ -116,7 +116,7 @@ func (ca *Capacitor) String() string {
 	return fmt.Sprint(ca.container)
 }
 
-func getUsageStats() string {
+func memoryStats() string {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 	return fmt.Sprintf("\n########\n# Alloc = %v\n"+
