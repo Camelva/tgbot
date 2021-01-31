@@ -19,7 +19,7 @@ type fileInfo struct {
 }
 
 func (c *Client) downloader() {
-	c.log.Trace("starting downloader")
+	c.log.Info("starting downloader")
 	for res := range c.results {
 		var uid int64
 		if res.msg.From != nil {
@@ -27,17 +27,17 @@ func (c *Client) downloader() {
 		} else {
 			uid = res.msg.Chat.ID
 		}
-		userLog := logrus.WithField("userID", uid)
+		userLog := c.log.WithField("userID", uid)
 		songLog := userLog.WithFields(logrus.Fields{
 			"id":   res.song.ID,
 			"link": res.song.Permalink,
 		})
 
-		songLog.Trace("got new result to load")
+		songLog.Info("got new result to load")
 
 		userQueue, ok := c.users[uid]
 		if ok {
-			userLog.Trace("user loader already up")
+			userLog.Debug("this user's loader already up")
 			// means loader *should be* already up
 			if len(userQueue) == cap(userQueue) {
 				userLog.WithField("amount", len(userQueue)).Info("user already sent too much songs")
@@ -53,7 +53,7 @@ func (c *Client) downloader() {
 
 			continue
 		}
-		userLog.Trace("need to create user instance")
+		userLog.Debug("need to create user instance")
 		// create user queue
 		userQueue = make(chan result, 30)
 		userQueue <- res
@@ -67,12 +67,12 @@ func (c *Client) downloader() {
 
 func freeUser(uid int64, users map[int64]chan result, log *logrus.Entry) {
 	ticker := time.NewTicker(time.Minute * 30)
-	log.Trace("start ticker to free user")
+	log.Debug("start ticker to free user")
 	defer ticker.Stop()
-	for tick := range ticker.C {
-		log.WithField("tick", tick).Trace("tick")
+	for range ticker.C {
+		log.Debug("tick")
 		if len(users[uid]) == 0 {
-			log.Trace("channel empty, freeing")
+			log.Debug("user's channel is empty, freeing")
 			// no more entries, free user
 			close(users[uid])
 			break
@@ -83,12 +83,16 @@ func freeUser(uid int64, users map[int64]chan result, log *logrus.Entry) {
 
 func (c *Client) _loadUserQueue(uid int64, in chan result) {
 	userLog := c.log.WithField("userID", uid)
-	userLog.Trace("init user loader")
+	userLog.Debug("init user loader")
 	for res := range in {
-		userLog.Trace("got song for user")
+		songLog := userLog.WithFields(logrus.Fields{
+			"id":   res.song.ID,
+			"link": res.song.Permalink,
+		})
+		songLog.Info("got new song for user")
 		// adding record to limiter, if already max - waiting for free space
-		//c.capacitor <- struct{}{}
 		c.capacitor.Add(res.song.ID, res.song.Permalink)
+		songLog.Debug("added to capacitor, start getting")
 		c._load(res)
 	}
 	userLog.Trace("no more songs from user")
@@ -106,7 +110,7 @@ func (c *Client) _load(res result) {
 	// check if song already in cache
 	info, cached := c.cache[res.song.ID]
 	if !cached {
-		songLog.Trace("not in cache, creating record..")
+		songLog.Debug("not in cache, creating record..")
 		// if no - add to cache
 		info = &fileInfo{
 			cacheContainer: &c.cache,
@@ -117,21 +121,21 @@ func (c *Client) _load(res result) {
 		c.cache[res.song.ID] = info
 	}
 
-	songLog.Trace("locking this file..")
+	songLog.Debug("locking this file..")
 	info.c.L.Lock()
-	songLog.Trace("file locked only for us, working..")
+	songLog.Debug("file locked only for us, working..")
 
 	defer func() {
 		// regardless of result:
 		c.deleteMessage(&res.tmpMsg) // delete temp message
 
-		songLog.Trace("unlocking file..")
+		songLog.Debug("unlocking file..")
 		info.c.L.Unlock() // unlock this file
 
 		//songLog.Trace("telling others it is available now..")
 		//info.c.Signal() // tell others this song is available
 
-		songLog.Trace("freeing capacitor by one..")
+		songLog.Debug("freeing capacitor by one..")
 		c.capacitor.Remove(res.song.ID) // free space for next song
 
 		c.removeWhenExpire(info) // scheduling delete from cache and file system
@@ -142,15 +146,15 @@ func (c *Client) _load(res result) {
 	// because we locking mutex, situation when fileLocation field *yet* empty is impossible
 	// empty field from cache only means something went wrong earlier
 	if info.fileLocation != "" {
-		songLog.Trace("getting song from cache")
+		songLog.Debug("trying to get song from cache")
 		songPath = info.fileLocation
 	}
 
 	// not cached, need to download and process
 	if songPath == "" {
 		// can return zero if error occurred
-		songLog.Trace("not cached, need to download..")
-		songPath = c._loadAndPrepareSong(res)
+		songLog.Debug("not cached, need to download..")
+		songPath = c._loadAndPrepareSong(res, songLog)
 	}
 
 	if songPath == "" {
@@ -160,20 +164,15 @@ func (c *Client) _load(res result) {
 		return
 	}
 
-	songLog.Trace("trying to send song to user..")
-	c._sendSongToUser(res, songPath)
+	songLog.Debug("trying to send song to user..")
+	c._sendSongToUser(res, songPath, songLog)
 
 	songLog.Info("done with this song")
 	info.fileLocation = songPath
 }
 
-func (c *Client) _loadAndPrepareSong(res result) string {
-	songLog := c.log.WithFields(logrus.Fields{
-		"id":   res.song.ID,
-		"link": res.song.Permalink,
-	})
-
-	songLog.Trace("getting song by using lib..")
+func (c *Client) _loadAndPrepareSong(res result, songLog *logrus.Entry) string {
+	songLog.Debug("getting song by using lib..")
 	songPath, err := res.song.GetNext()
 
 	if err != nil {
@@ -190,18 +189,15 @@ func (c *Client) _loadAndPrepareSong(res result) string {
 
 	fileStats, err := os.Stat(songPath)
 	if err != nil {
-		songLog.WithFields(logrus.Fields{
-			"error": err,
-			"path":  songPath,
-		}).Error("can't read file..")
+		songLog.WithField("value", songPath).WithError(err).Error("can't read file..")
 		c.sendMessage(&res.msg, c.getDict(&res.msg).MustLocalize(errUndefined(err)), true)
 		return ""
 	}
 	if fileStats.Size() > (49 * 1024 * 1024) {
-		songLog.WithField("size", fileStats.Size()/1024/1024).Error("file >50mb")
+		songLog.WithField("value", fileStats.Size()/1024/1024).Error("file >50mb")
 		c.sendMessage(&res.msg, c.getDict(&res.msg).MustLocalize(errSizeLimit), true)
 
-		songLog.Trace("removing file..")
+		songLog.Debug("removing file..")
 		_ = os.Remove(songPath)
 		return ""
 	}
@@ -209,12 +205,8 @@ func (c *Client) _loadAndPrepareSong(res result) string {
 	return songPath
 }
 
-func (c *Client) _sendSongToUser(res result, songPath string) {
-	songLog := c.log.WithFields(logrus.Fields{
-		"id":   res.song.ID,
-		"link": res.song.Permalink,
-	})
-	songLog.WithField("file", songPath).Trace("preparing file to loading..")
+func (c *Client) _sendSongToUser(res result, songPath string, songLog *logrus.Entry) {
+	songLog.WithField("value", songPath).Debug("preparing file to loading..")
 
 	// tell user we good
 	c.editMessage(&res.tmpMsg,

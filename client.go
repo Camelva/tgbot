@@ -92,7 +92,7 @@ func NewClient(conf ClientConfig) (*Client, error) {
 	}
 
 	c.cache = make(map[int]*fileInfo)
-	c.results = make(chan result)
+	c.results = make(chan result, 100)
 
 	c.shutdown = make(chan os.Signal, 1)
 	c.done = make(chan bool, 1)
@@ -146,9 +146,7 @@ func (c *Client) editMessage(msg *tgbotapi.Message, text string) (message *tgbot
 }
 
 func (c *Client) returnNoURL(msg *tgbotapi.Message) {
-	c.log.WithFields(logrus.Fields{
-		"message": msg.Text,
-	}).Trace("no url here, exiting")
+	c.log.WithField("value", msg.Text).Trace("no url here, exiting")
 
 	// report to user only if its private chat
 	if msg.Chat.IsPrivate() {
@@ -158,9 +156,7 @@ func (c *Client) returnNoURL(msg *tgbotapi.Message) {
 }
 
 func (c *Client) returnNoSCURL(msg *tgbotapi.Message) {
-	c.log.WithFields(logrus.Fields{
-		"message": msg.Text,
-	}).Trace("got url, but not soundcloud")
+	c.log.WithField("value", msg.Text).Trace("not soundcloud URL")
 
 	// report to user only if its private chat
 	if msg.Chat.IsPrivate() {
@@ -195,11 +191,7 @@ func (c *Client) exit() {
 	c.log.Info("bot was turned off, finishing work..")
 	for {
 		if c.capacitor.Len() > 0 || len(c.results) > 0 {
-			c.log.WithFields(logrus.Fields{
-				"songsAmount": c.capacitor.Len(),
-				"songs":       c.capacitor,
-				"messages":    len(c.results),
-			}).Info("work to finish")
+			c.log.Warn(fmt.Sprintf("%d songs and %d messages left. Songs: %s", c.capacitor.Len(), len(c.results), c.capacitor.String()))
 			time.Sleep(time.Second * 30)
 			continue
 		}
@@ -234,10 +226,7 @@ func (c *Client) sendLogs() error {
 }
 
 func (c *Client) removeWhenExpire(fi *fileInfo) {
-	c.log.WithFields(logrus.Fields{
-		"id":  fi.id,
-		"ttl": fi.ttl,
-	}).Debug("scheduling file remove")
+	c.log.WithField("id", fi.id).Debug("scheduling file remove after %s", fi.ttl.String())
 
 	time.AfterFunc(fi.ttl, fi.remove)
 }

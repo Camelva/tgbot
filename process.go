@@ -16,7 +16,7 @@ func (c *Client) processMessage(msg *tgbotapi.Message) {
 		return
 	}
 
-	c.log.WithField("text", msg.Text).Trace("Got new message")
+	c.log.WithField("value", msg.Text).Info("Got new message")
 	reportMessage(msg)
 
 	if msg.IsCommand() {
@@ -67,7 +67,7 @@ func (c *Client) processMessage(msg *tgbotapi.Message) {
 
 	song, err := c.loader.GetURL(scURL)
 	if err != nil {
-		scURLLog := c.log.WithField("scURL", scURL.String())
+		scURLLog := c.log.WithField("value", scURL.String())
 		if err == soundcloader.NotSong {
 			scURLLog.Info("not song url, exiting..")
 			c.editMessage(tmpMsg, c.getDict(msg).MustLocalize(errUnsupportedFormat))
@@ -83,7 +83,7 @@ func (c *Client) processMessage(msg *tgbotapi.Message) {
 }
 
 func (c *Client) processCmd(msg *tgbotapi.Message) {
-	c.log.WithField("cmd", msg.Command()).Trace("its command, responding..")
+	c.log.WithField("value", msg.Command()).Trace("its command, responding..")
 	if msg.Command() == "help" {
 		c.sendMessage(msg, c.getDict(msg).MustLocalize(cmdHelp), true)
 		return
