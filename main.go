@@ -59,7 +59,7 @@ func main() {
 
 	updates := c.bot.GetUpdatesChan(u)
 
-	go c.downloader()
+	//go c.downloader()
 
 	for update := range updates {
 		if update.Message != nil {

@@ -20,13 +20,14 @@ type Client struct {
 	ownerID        int
 	fileExpiration time.Duration
 
-	users map[int64]chan result
+	//users map[int64]chan result
 	cache map[int]*fileInfo
 	//capacitor    chan struct{}
 
 	capacitor *Capacitor
 
-	results chan result
+	//results chan result
+	results *results
 
 	shutdown chan os.Signal
 	done     chan bool
@@ -83,7 +84,7 @@ func NewClient(conf ClientConfig) (*Client, error) {
 	}
 
 	//c.usersLoading = make(map[int64]*sync.WaitGroup)
-	c.users = make(map[int64]chan result)
+	//c.users = make(map[int64]chan result)
 
 	c.capacitor = &Capacitor{
 		cond:      *sync.NewCond(&sync.Mutex{}),
@@ -92,7 +93,8 @@ func NewClient(conf ClientConfig) (*Client, error) {
 	}
 
 	c.cache = make(map[int]*fileInfo)
-	c.results = make(chan result, 100)
+	//c.results = make(chan result, 100)
+	c.results = NewResults(30, time.Second*15)
 
 	c.shutdown = make(chan os.Signal, 1)
 	c.done = make(chan bool, 1)
@@ -190,8 +192,8 @@ func (c *Client) exit() {
 	c.bot.StopReceivingUpdates()
 	c.log.Info("bot was turned off, finishing work..")
 	for {
-		if c.capacitor.Len() > 0 || len(c.results) > 0 {
-			c.log.Warn(fmt.Sprintf("%d songs and %d messages left. Songs: %s", c.capacitor.Len(), len(c.results), c.capacitor.String()))
+		if c.capacitor.Len() > 0 || c.results.Len() > 0 {
+			c.log.Warn(fmt.Sprintf("%d songs left. %d user's loader(-s) still working. Songs: %s", c.capacitor.Len(), c.results.Len(), c.capacitor.String()))
 			time.Sleep(time.Second * 30)
 			continue
 		}

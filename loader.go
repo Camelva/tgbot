@@ -9,6 +9,96 @@ import (
 	"time"
 )
 
+type results struct {
+	sync.Mutex
+	container    map[int64]chan result
+	limitPerUser int
+	refreshRate  time.Duration
+}
+
+func NewResults(limitPerUser int, refreshRate time.Duration) *results {
+	return &results{
+		container:    make(map[int64]chan result),
+		limitPerUser: limitPerUser,
+		refreshRate:  refreshRate,
+	}
+}
+
+func (r *results) Add(c *Client, res result) {
+	r.Lock()
+	defer r.Unlock()
+
+	userLog := c.log.WithField("userID", res.userID)
+	userLog.Info("adding new song for user")
+
+	ch, ok := r.container[res.userID]
+	if ok {
+		if len(ch) >= r.limitPerUser {
+			// too much songs from same user
+			userLog.WithField("value", len(ch)).Error("user already sent too much songs")
+			c.sendMessage(&res.msg, "please wait for some of your previous songs to download and try again later", true)
+			return
+		}
+		// telling user they need to wait for their previous songs finish
+		c.editMessage(&res.tmpMsg, c.getDict(&res.msg).MustLocalize(processQueue))
+		ch <- res
+		return
+	}
+
+	userLog.Debug("first user's song, creating his loader first")
+
+	ch = make(chan result, r.limitPerUser)
+	ch <- res
+	r.container[res.userID] = ch
+	go userLoader(c, res.userID, r.refreshRate)
+	return
+}
+
+func (r *results) Get(userID int64, log *logrus.Logger) (res result, ok bool) {
+	r.Lock()
+	defer r.Unlock()
+
+	userLog := log.WithField("userID", userID)
+	userLog.Debug("fetching song from user's queue")
+
+	ch, userExist := r.container[userID]
+	if userExist {
+		if len(ch) > 0 {
+			userLog.Debug("fetched some song for user")
+			return <-ch, true
+		}
+		userLog.Debug("got user's queue, but it's empty, deleting")
+		delete(r.container, userID)
+	}
+	userLog.Debug("fetched no songs from user's queue")
+	return
+}
+
+func (r *results) Len() int {
+	return len(r.container)
+}
+
+func userLoader(c *Client, userID int64, refreshRate time.Duration) {
+	userLog := c.log.WithField("userID", userID)
+	tick := time.NewTicker(refreshRate)
+
+	userLog.Debug("starting loader for user")
+
+	for range tick.C {
+		res, ok := c.results.Get(userID, c.log)
+		if ok {
+			userLog.Debug("got new record for user")
+			getSong(c, res)
+			continue
+		}
+
+		userLog.Debug("no more songs for user")
+		tick.Stop()
+		break
+	}
+	userLog.Debug("stopping user's loader")
+}
+
 type fileInfo struct {
 	c              sync.Cond
 	cacheContainer *map[int]*fileInfo
@@ -18,82 +108,82 @@ type fileInfo struct {
 	ttl          time.Duration
 }
 
-func (c *Client) downloader() {
-	c.log.Info("starting downloader")
-	for res := range c.results {
-		userLog := c.log.WithField("userID", res.userID)
-		songLog := userLog.WithFields(logrus.Fields{
-			"id":   res.song.ID,
-			"link": res.song.Permalink,
-		})
+//func (c *Client) downloader() {
+//	c.log.Info("starting downloader")
+//	for res := range c.results {
+//		userLog := c.log.WithField("userID", res.userID)
+//		songLog := userLog.WithFields(logrus.Fields{
+//			"id":   res.song.ID,
+//			"link": res.song.Permalink,
+//		})
+//
+//		songLog.Info("got new result to load")
+//
+//		userQueue, ok := c.users[res.userID]
+//		if ok {
+//			userLog.Debug("this user's loader already up")
+//			// means loader *should be* already up
+//			if len(userQueue) == cap(userQueue) {
+//				userLog.WithField("amount", len(userQueue)).Info("user already sent too much songs")
+//				c.sendMessage(
+//					&res.msg,
+//					"please wait for your previous songs to download and try again later",
+//					true,
+//				)
+//				return
+//			}
+//			c.editMessage(&res.tmpMsg, c.getDict(&res.msg).MustLocalize(processQueue))
+//			userQueue <- res
+//
+//			continue
+//		}
+//		userLog.Debug("need to create user instance")
+//		// create user queue
+//		userQueue = make(chan result, 30)
+//		userQueue <- res
+//		c.users[res.userID] = userQueue
+//
+//		go freeUser(res.userID, c.users, userLog)
+//
+//		go c._loadUserQueue(res.userID, c.users[res.userID])
+//	}
+//}
 
-		songLog.Info("got new result to load")
+//func freeUser(uid int64, users map[int64]chan result, log *logrus.Entry) {
+//	ticker := time.NewTicker(time.Minute * 30)
+//	log.Debug("start ticker to free user")
+//	defer ticker.Stop()
+//	for range ticker.C {
+//		log.Debug("tick")
+//		if len(users[uid]) == 0 {
+//			log.Debug("user's channel is empty, freeing")
+//			// no more entries, free user
+//			close(users[uid])
+//			break
+//		}
+//		continue
+//	}
+//}
 
-		userQueue, ok := c.users[res.userID]
-		if ok {
-			userLog.Debug("this user's loader already up")
-			// means loader *should be* already up
-			if len(userQueue) == cap(userQueue) {
-				userLog.WithField("amount", len(userQueue)).Info("user already sent too much songs")
-				c.sendMessage(
-					&res.msg,
-					"please wait for your previous songs to download and try again later",
-					true,
-				)
-				return
-			}
-			c.editMessage(&res.tmpMsg, c.getDict(&res.msg).MustLocalize(processQueue))
-			userQueue <- res
+//func (c *Client) _loadUserQueue(uid int64, in chan result) {
+//	userLog := c.log.WithField("userID", uid)
+//	userLog.Debug("init user loader")
+//	for res := range in {
+//		songLog := userLog.WithFields(logrus.Fields{
+//			"id":   res.song.ID,
+//			"link": res.song.Permalink,
+//		})
+//		songLog.Info("got new song for user")
+//		// adding record to limiter, if already max - waiting for free space
+//		c.capacitor.Add(res.song.ID, res.song.Permalink)
+//		songLog.Debug("added to capacitor, start getting")
+//		c._load(res)
+//	}
+//	userLog.Trace("no more songs from user")
+//	delete(c.users, uid)
+//}
 
-			continue
-		}
-		userLog.Debug("need to create user instance")
-		// create user queue
-		userQueue = make(chan result, 30)
-		userQueue <- res
-		c.users[res.userID] = userQueue
-
-		go freeUser(res.userID, c.users, userLog)
-
-		go c._loadUserQueue(res.userID, c.users[res.userID])
-	}
-}
-
-func freeUser(uid int64, users map[int64]chan result, log *logrus.Entry) {
-	ticker := time.NewTicker(time.Minute * 30)
-	log.Debug("start ticker to free user")
-	defer ticker.Stop()
-	for range ticker.C {
-		log.Debug("tick")
-		if len(users[uid]) == 0 {
-			log.Debug("user's channel is empty, freeing")
-			// no more entries, free user
-			close(users[uid])
-			break
-		}
-		continue
-	}
-}
-
-func (c *Client) _loadUserQueue(uid int64, in chan result) {
-	userLog := c.log.WithField("userID", uid)
-	userLog.Debug("init user loader")
-	for res := range in {
-		songLog := userLog.WithFields(logrus.Fields{
-			"id":   res.song.ID,
-			"link": res.song.Permalink,
-		})
-		songLog.Info("got new song for user")
-		// adding record to limiter, if already max - waiting for free space
-		c.capacitor.Add(res.song.ID, res.song.Permalink)
-		songLog.Debug("added to capacitor, start getting")
-		c._load(res)
-	}
-	userLog.Trace("no more songs from user")
-	delete(c.users, uid)
-}
-
-func (c *Client) _load(res result) {
+func getSong(c *Client, res result) {
 	songLog := c.log.WithFields(logrus.Fields{
 		"id":   res.song.ID,
 		"link": res.song.Permalink,

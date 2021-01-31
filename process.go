@@ -84,8 +84,9 @@ func (c *Client) processMessage(msg *tgbotapi.Message) {
 		}
 		return
 	}
-
-	c.results <- result{userID: uid, msg: *msg, tmpMsg: *tmpMsg, song: *song}
+	r := result{userID: uid, msg: *msg, tmpMsg: *tmpMsg, song: *song}
+	//c.results <- result{userID: uid, msg: *msg, tmpMsg: *tmpMsg, song: *song}
+	c.results.Add(c, r)
 	return
 }
 
