@@ -21,13 +21,7 @@ type fileInfo struct {
 func (c *Client) downloader() {
 	c.log.Info("starting downloader")
 	for res := range c.results {
-		var uid int64
-		if res.msg.From != nil {
-			uid = int64(res.msg.From.ID)
-		} else {
-			uid = res.msg.Chat.ID
-		}
-		userLog := c.log.WithField("userID", uid)
+		userLog := c.log.WithField("userID", res.userID)
 		songLog := userLog.WithFields(logrus.Fields{
 			"id":   res.song.ID,
 			"link": res.song.Permalink,
@@ -35,7 +29,7 @@ func (c *Client) downloader() {
 
 		songLog.Info("got new result to load")
 
-		userQueue, ok := c.users[uid]
+		userQueue, ok := c.users[res.userID]
 		if ok {
 			userLog.Debug("this user's loader already up")
 			// means loader *should be* already up
@@ -57,11 +51,11 @@ func (c *Client) downloader() {
 		// create user queue
 		userQueue = make(chan result, 30)
 		userQueue <- res
-		c.users[uid] = userQueue
+		c.users[res.userID] = userQueue
 
-		go freeUser(uid, c.users, userLog)
+		go freeUser(res.userID, c.users, userLog)
 
-		go c._loadUserQueue(uid, c.users[uid])
+		go c._loadUserQueue(res.userID, c.users[res.userID])
 	}
 }
 

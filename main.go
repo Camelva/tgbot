@@ -13,6 +13,7 @@ import (
 )
 
 type result struct {
+	userID int64
 	msg    tgbotapi.Message
 	tmpMsg tgbotapi.Message
 	song   soundcloader.Song

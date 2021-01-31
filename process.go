@@ -16,7 +16,14 @@ func (c *Client) processMessage(msg *tgbotapi.Message) {
 		return
 	}
 
-	c.log.WithField("value", msg.Text).Info("Got new message")
+	var uid int64
+	if msg.From != nil {
+		uid = int64(msg.From.ID)
+	} else {
+		uid = msg.Chat.ID
+	}
+
+	c.log.WithField("value", msg.Text).WithField("userID", uid).Info("Got new message")
 	reportMessage(msg)
 
 	if msg.IsCommand() {
@@ -78,7 +85,7 @@ func (c *Client) processMessage(msg *tgbotapi.Message) {
 		return
 	}
 
-	c.results <- result{*msg, *tmpMsg, *song}
+	c.results <- result{userID: uid, msg: *msg, tmpMsg: *tmpMsg, song: *song}
 	return
 }
 
