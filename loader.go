@@ -80,11 +80,9 @@ func (r *results) Len() int {
 
 func userLoader(c *Client, userID int64, refreshRate time.Duration) {
 	userLog := c.log.WithField("userID", userID)
-	tick := time.NewTicker(refreshRate)
-
 	userLog.Debug("starting loader for user")
 
-	for range tick.C {
+	for {
 		res, ok := c.results.Get(userID, c.log)
 		if ok {
 			songLog := userLog.WithFields(logrus.Fields{
@@ -94,13 +92,15 @@ func userLoader(c *Client, userID int64, refreshRate time.Duration) {
 			songLog.Debug("got new record for user")
 			//adding record to limiter, if already max - waiting for free space
 			c.capacitor.Add(res.song.ID, res.song.Permalink)
+
 			songLog.Debug("added to capacitor, start getting")
 			getSong(c, res)
+
+			time.Sleep(refreshRate)
 			continue
 		}
 
 		userLog.Debug("no more songs for user")
-		tick.Stop()
 		break
 	}
 	userLog.Debug("stopping user's loader")

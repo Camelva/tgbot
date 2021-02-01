@@ -94,7 +94,7 @@ func NewClient(conf ClientConfig) (*Client, error) {
 
 	c.cache = make(map[int]*fileInfo)
 	//c.results = make(chan result, 100)
-	c.results = NewResults(30, time.Second*15)
+	c.results = NewResults(30, time.Second*10)
 
 	c.shutdown = make(chan os.Signal, 1)
 	c.done = make(chan bool, 1)
