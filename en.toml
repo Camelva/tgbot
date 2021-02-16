@@ -11,7 +11,11 @@ Then try send message again. \
 If error still persist - contact with developer (@Camelva)
 
 = Updates channel: @sc_download_bot_info
-= Currently supported only direct song links from [soundcloud.com]"""
+= Currently supported only direct song links from [soundcloud.com]
+
+If you appreciate my work and wish to help - \
+please consider to <a href="https://www.patreon.com/camelva">support me on Patreon</a> \
+or directly with BTC: <code>1EmHYR8kZsuALW2XyVRKYLXNKqZ95hc7YP</code>"""
 
 Default = """I don't know that command.
 Use /help for additional info"""
