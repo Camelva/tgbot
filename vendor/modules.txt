@@ -1,7 +1,10 @@
+# github.com/PaulSonOfLars/gotgbot/v2 v2.0.0-beta7
+github.com/PaulSonOfLars/gotgbot/v2
+github.com/PaulSonOfLars/gotgbot/v2/ext
+github.com/PaulSonOfLars/gotgbot/v2/ext/handlers
+github.com/PaulSonOfLars/gotgbot/v2/ext/handlers/filters
 # github.com/camelva/soundcloader v0.0.0-20210123160112-0142ea51d73c
 github.com/camelva/soundcloader
-# github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.0.0-rc1.0.20201106042948-366879b11047
-github.com/go-telegram-bot-api/telegram-bot-api/v5
 # github.com/kelseyhightower/envconfig v1.4.0
 github.com/kelseyhightower/envconfig
 # github.com/nicksnyder/go-i18n/v2 v2.1.2
@@ -10,16 +13,6 @@ github.com/nicksnyder/go-i18n/v2/internal
 github.com/nicksnyder/go-i18n/v2/internal/plural
 # github.com/pelletier/go-toml v1.8.1
 github.com/pelletier/go-toml
-# github.com/rifflock/lfshook v0.0.0-20180920164130-b9218ef580f5
-github.com/rifflock/lfshook
-# github.com/sirupsen/logrus v1.7.0
-github.com/sirupsen/logrus
-# github.com/technoweenie/multipartstreamer v1.0.1
-github.com/technoweenie/multipartstreamer
-# golang.org/x/sys v0.0.0-20210124154548-22da62e12c0c
-golang.org/x/sys/internal/unsafeheader
-golang.org/x/sys/unix
-golang.org/x/sys/windows
 # golang.org/x/text v0.3.5
 golang.org/x/text/internal/language
 golang.org/x/text/internal/language/compact

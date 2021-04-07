@@ -2,126 +2,61 @@ package main
 
 import (
 	"fmt"
-	"github.com/camelva/soundcloader"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/sirupsen/logrus"
+	"github.com/PaulSonOfLars/gotgbot/v2"
+	"github.com/PaulSonOfLars/gotgbot/v2/ext"
+	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers"
+	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers/filters"
+	"log"
+	"net/http"
 	"os"
-	"os/signal"
-	"runtime"
-	"sync"
 	"time"
 )
-
-type result struct {
-	userID int64
-	msg    tgbotapi.Message
-	tmpMsg tgbotapi.Message
-	song   soundcloader.Song
-}
 
 func main() {
 	config := loadConfigs("env.yml", "config.yml")
 
-	bot, err := tgbotapi.NewBotAPI(config.Telegram.Token)
-	if err != nil {
-		logrus.WithError(err).Fatal("cant init telegram bot")
-	}
+	log.Println(config.Telegram.Token)
 
-	ttl, err := time.ParseDuration(config.Settings.FileTTL)
-	if err != nil {
-		ttl = time.Hour
-	}
-
-	c, err := NewClient(ClientConfig{
-		b:              bot,
-		dict:           getResponses(),
-		ownerID:        config.Telegram.OwnerID,
-		loadersLimit:   config.Settings.LoadersLimit,
-		fileExpiration: ttl,
+	b, err := gotgbot.NewBot(config.Telegram.Token, &gotgbot.BotOpts{
+		Client:      http.Client{},
+		GetTimeout:  time.Second * 10,
+		PostTimeout: time.Minute * 5,
 	})
-
 	if err != nil {
-		logrus.WithError(err).Fatal("cant create client")
+		panic("failed to create new bot: " + err.Error())
 	}
 
-	//c.SetDebug(true)
+	// Create updater and dispatcher.
+	updater := ext.NewUpdater(&ext.UpdaterOpts{
+		ErrorLog: log.New(os.Stderr, "ERROR", log.LstdFlags),
+		DispatcherOpts: ext.DispatcherOpts{
+			Error:    onError,
+			ErrorLog: log.New(os.Stderr, "ERROR", log.LstdFlags),
+		}})
+	dispatcher := updater.Dispatcher
 
-	c.log.Info("Authorized on account ", bot.Self.UserName)
+	// Commands first
+	dispatcher.AddHandlerToGroup(handlers.NewCommand("start", cmdStart), 0)
+	dispatcher.AddHandlerToGroup(handlers.NewCommand("help", cmdHelp), 0)
+	dispatcher.AddHandlerToGroup(handlers.NewMessage(filters.Command, cmdUndefined), 0)
 
-	signal.Notify(c.shutdown, os.Interrupt, os.Kill)
-	go func() {
-		<-c.shutdown
-		c.exit()
-	}()
+	// Then messages with url
+	dispatcher.AddHandlerToGroup(handlers.NewMessage(filters.Entity("url"), checkURL), 1)
 
-	u := tgbotapi.NewUpdate(0)
-	u.Timeout = 60
+	// Last - everything else
+	dispatcher.AddHandlerToGroup(handlers.NewMessage(filters.All, replyNotURL), 1)
 
-	updates := c.bot.GetUpdatesChan(u)
-
-	//go c.downloader()
-
-	for update := range updates {
-		if update.Message != nil {
-			go processMessage(c, update.Message)
-		} else if update.ChannelPost != nil {
-			go processMessage(c, update.ChannelPost)
-		} else {
-			continue
-		}
+	// Start receiving updates.
+	err = updater.StartPolling(b, &ext.PollingOpts{})
+	if err != nil {
+		panic("failed to start polling: " + err.Error())
 	}
+	fmt.Printf("%s has been started...\n", b.User.Username)
 
-	<-c.done
-	c.log.Info("shutting down and sending logs..")
-	_ = c.sendLogs()
+	// Idle, to keep updates coming in, and avoid bot stopping.
+	updater.Idle()
 }
 
-type Capacitor struct {
-	cond      sync.Cond
-	container map[int]string
-	limit     int
-}
-
-func (ca *Capacitor) Add(id int, permalink string) {
-	ca.cond.L.Lock()
-	defer ca.cond.L.Unlock()
-
-	for len(ca.container) >= ca.limit {
-		ca.cond.Wait()
-	}
-
-	ca.container[id] = permalink
-}
-
-func (ca *Capacitor) Remove(id int) {
-	ca.cond.L.Lock()
-	defer ca.cond.L.Unlock()
-
-	if len(ca.container) >= ca.limit {
-		// means Add() probably waiting, let them know
-		ca.cond.Signal()
-	}
-	delete(ca.container, id)
-}
-
-func (ca *Capacitor) Len() int {
-	return len(ca.container)
-}
-
-func (ca *Capacitor) Max() int {
-	return ca.limit
-}
-
-func (ca *Capacitor) String() string {
-	return fmt.Sprint(ca.container)
-}
-
-func memoryStats() string {
-	var m runtime.MemStats
-	runtime.ReadMemStats(&m)
-	return fmt.Sprintf("\n########\n# Alloc = %v\n"+
-		"# TotalAlloc = %v\n"+
-		"# Sys = %v\n"+
-		"# NumGC = %v\n########\n",
-		m.Alloc/1024, m.TotalAlloc/1024, m.Sys/1024, m.NumGC)
+func onError(ctx *ext.Context, err error) {
+	log.Printf("%s while doing %s", err, ctx.EffectiveMessage.Text)
 }
