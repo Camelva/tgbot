@@ -9,13 +9,12 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"tgbot/telemetry"
 	"time"
 )
 
 func main() {
 	config := loadConfigs("env.yml", "config.yml")
-
-	log.Println(config.Telegram.Token)
 
 	b, err := gotgbot.NewBot(config.Telegram.Token, &gotgbot.BotOpts{
 		Client:      http.Client{},
@@ -25,6 +24,9 @@ func main() {
 	if err != nil {
 		panic("failed to create new bot: " + err.Error())
 	}
+
+	// need to init telemetry
+	telemetry.SetServer("https://bigbonus.pp.ua/api/v2/")
 
 	// Create updater and dispatcher.
 	updater := ext.NewUpdater(&ext.UpdaterOpts{

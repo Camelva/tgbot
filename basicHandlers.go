@@ -4,33 +4,39 @@ import (
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
 	"tgbot/resp"
+	"tgbot/telemetry"
 )
 
 func cmdStart(b *gotgbot.Bot, ctx *ext.Context) error {
+	_ = telemetry.SendReport(ctx, false)
 	_, err := b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.CmdStart, ctx.EffectiveUser.LanguageCode),
 		&gotgbot.SendMessageOpts{ReplyToMessageId: ctx.EffectiveMessage.MessageId, ParseMode: "HTML"})
 	return err
 }
 
 func cmdHelp(b *gotgbot.Bot, ctx *ext.Context) error {
+	_ = telemetry.SendReport(ctx, false)
 	_, err := b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.CmdHelp, ctx.EffectiveUser.LanguageCode),
 		&gotgbot.SendMessageOpts{ReplyToMessageId: ctx.EffectiveMessage.MessageId, ParseMode: "HTML"})
 	return err
 }
 
 func cmdUndefined(b *gotgbot.Bot, ctx *ext.Context) error {
+	_ = telemetry.SendReport(ctx, false)
 	_, err := b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.CmdUndefined, ctx.EffectiveUser.LanguageCode),
 		&gotgbot.SendMessageOpts{ReplyToMessageId: ctx.EffectiveMessage.MessageId, ParseMode: "HTML"})
 	return err
 }
 
 func replyNotURL(b *gotgbot.Bot, ctx *ext.Context) error {
+	_ = telemetry.SendReport(ctx, false)
 	_, err := b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrNotURL, ctx.EffectiveUser.LanguageCode),
 		&gotgbot.SendMessageOpts{ReplyToMessageId: ctx.EffectiveMessage.MessageId, ParseMode: "HTML"})
 	return err
 }
 
 func replyNotSCURL(b *gotgbot.Bot, ctx *ext.Context) error {
+	_ = telemetry.SendReport(ctx, false)
 	_, err := b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrNotSCURL, ctx.EffectiveUser.LanguageCode),
 		&gotgbot.SendMessageOpts{ReplyToMessageId: ctx.EffectiveMessage.MessageId, ParseMode: "HTML"})
 	return err

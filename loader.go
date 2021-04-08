@@ -74,6 +74,7 @@ func loadSong(b *gotgbot.Bot, ctx *ext.Context) (err error) {
 
 	ctx.Data["fileLocation"] = location
 	ctx.Data["songInfo"] = song
+
 	return uploadToUser(b, ctx)
 }
 

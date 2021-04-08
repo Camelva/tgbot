@@ -6,10 +6,17 @@ import (
 	"github.com/camelva/soundcloader"
 	"net/url"
 	"tgbot/resp"
+	"tgbot/telemetry"
 	"unicode/utf16"
 )
 
 func checkURL(b *gotgbot.Bot, ctx *ext.Context) error {
+	var success = false
+
+	defer func() {
+		_ = telemetry.SendReport(ctx, success)
+	}()
+
 	var urlsFromMsg []url.URL
 
 	if len(ctx.EffectiveMessage.Entities) > 0 {
@@ -56,5 +63,9 @@ func checkURL(b *gotgbot.Bot, ctx *ext.Context) error {
 	ctx.Data["tempMessage"] = tmpMsg
 	ctx.Data["parsedURL"] = scURL
 
-	return loadSong(b, ctx)
+	err = loadSong(b, ctx)
+	if err == nil {
+		success = true
+	}
+	return err
 }
