@@ -16,9 +16,9 @@ import (
 var log *logrus.Logger
 
 func main() {
-	config := loadConfigs("env.yml", "config.yml")
-
 	log = initLog()
+
+	config := loadConfigs("env.yml", "config.yml")
 
 	b, err := gotgbot.NewBot(config.Telegram.Token, &gotgbot.BotOpts{
 		Client:      http.Client{},
