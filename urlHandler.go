@@ -11,7 +11,10 @@ import (
 )
 
 func checkURL(b *gotgbot.Bot, ctx *ext.Context) error {
-	log.WithField("message", ctx.EffectiveMessage.Text).Info("got new message, checking..")
+	log.
+		WithField("value", ctx.EffectiveMessage.Text).
+		WithField("messageID", ctx.EffectiveMessage.MessageId).
+		Info("checking url..")
 	var success = false
 
 	defer func() {
@@ -67,6 +70,9 @@ func checkURL(b *gotgbot.Bot, ctx *ext.Context) error {
 	err = loadSong(b, ctx)
 	if err == nil {
 		success = true
+		log.
+			WithField("messageID", ctx.EffectiveMessage.MessageId).
+			Info("everything done")
 	}
 	return err
 }

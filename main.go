@@ -41,23 +41,27 @@ func main() {
 		}})
 	dispatcher := updater.Dispatcher
 
-	// Commands first
-	dispatcher.AddHandlerToGroup(handlers.NewCommand("start", cmdStart), 0)
-	dispatcher.AddHandlerToGroup(handlers.NewCommand("help", cmdHelp), 0)
-	dispatcher.AddHandlerToGroup(handlers.NewMessage(filters.Command, cmdUndefined), 0)
+	// log first
+	dispatcher.AddHandlerToGroup(handlers.NewMessage(filters.All, logMessage), 0)
+
+	// Commands
+	dispatcher.AddHandlerToGroup(handlers.NewMessage(filters.Command, logCmd), 1)
+	dispatcher.AddHandlerToGroup(handlers.NewCommand("start", cmdStart), 1)
+	dispatcher.AddHandlerToGroup(handlers.NewCommand("help", cmdHelp), 1)
+	dispatcher.AddHandlerToGroup(handlers.NewMessage(filters.Command, cmdUndefined), 1)
 
 	// Then messages with url
-	dispatcher.AddHandlerToGroup(handlers.NewMessage(filters.Entity("url"), checkURL), 1)
+	dispatcher.AddHandlerToGroup(handlers.NewMessage(filters.Entity("url"), checkURL), 2)
 
-	// Last - everything else
-	dispatcher.AddHandlerToGroup(handlers.NewMessage(filters.All, replyNotURL), 1)
+	// Lastly - default reply
+	dispatcher.AddHandlerToGroup(handlers.NewMessage(filters.All, replyNotURL), 2)
 
 	// Start receiving updates.
 	err = updater.StartPolling(b, &ext.PollingOpts{})
 	if err != nil {
 		log.WithError(err).Fatal("failed to start polling: ")
 	}
-	log.Info("%s has been started...\n", b.User.Username)
+	log.Infof("%s has been started...", b.User.Username)
 
 	// Idle, to keep updates coming in, and avoid bot stopping.
 	updater.Idle()

@@ -7,34 +7,65 @@ import (
 	"tgbot/telemetry"
 )
 
-func cmdStart(b *gotgbot.Bot, ctx *ext.Context) error {
+func logMessage(b *gotgbot.Bot, ctx *ext.Context) error {
+	// sticker or anything non-text
+	if ctx.EffectiveMessage.Text != "" {
+		log.
+			WithField("messageID", ctx.EffectiveMessage.MessageId).
+			WithField("userID", ctx.EffectiveUser.Id).
+			Info("Got new message")
+	}
+	return ext.ContinueGroups
+}
+
+func logCmd(b *gotgbot.Bot, ctx *ext.Context) error {
+	log.
+		WithField("messageID", ctx.EffectiveMessage.MessageId).
+		WithField("value", ctx.EffectiveMessage.Text).
+		Info("it's command, responding..")
+
 	_ = telemetry.SendReport(ctx, false)
-	log.WithField("command", "start").Info("got new command")
+
+	return ext.ContinueGroups
+}
+
+func cmdStart(b *gotgbot.Bot, ctx *ext.Context) error {
 	_, err := b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.CmdStart, ctx.EffectiveUser.LanguageCode),
 		&gotgbot.SendMessageOpts{ReplyToMessageId: ctx.EffectiveMessage.MessageId, ParseMode: "HTML"})
-	return err
+
+	if err != nil {
+		log.WithError(err).Error("while responding")
+	}
+
+	return ext.EndGroups
 }
 
 func cmdHelp(b *gotgbot.Bot, ctx *ext.Context) error {
-	_ = telemetry.SendReport(ctx, false)
-	log.WithField("command", "help").Info("got new command")
 	_, err := b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.CmdHelp, ctx.EffectiveUser.LanguageCode),
 		&gotgbot.SendMessageOpts{ReplyToMessageId: ctx.EffectiveMessage.MessageId, ParseMode: "HTML"})
-	return err
+
+	if err != nil {
+		log.WithError(err).Error("while responding")
+	}
+
+	return ext.EndGroups
 }
 
 func cmdUndefined(b *gotgbot.Bot, ctx *ext.Context) error {
-	_ = telemetry.SendReport(ctx, false)
-	log.WithField("command", ctx.EffectiveMessage.Text).Info("got undefined command")
 	_, err := b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.CmdUndefined, ctx.EffectiveUser.LanguageCode),
 		&gotgbot.SendMessageOpts{ReplyToMessageId: ctx.EffectiveMessage.MessageId, ParseMode: "HTML"})
-	return err
+
+	if err != nil {
+		log.WithError(err).Error("while responding")
+	}
+
+	return ext.EndGroups
 }
 
 func replyNotURL(b *gotgbot.Bot, ctx *ext.Context) error {
+	log.WithField("messageID", ctx.EffectiveMessage.MessageId).Info("no url here, exiting")
+
 	_ = telemetry.SendReport(ctx, false)
-	// don't log people' text messages
-	log.Info("got message without url")
 
 	if ctx.EffectiveChat.Type != "private" {
 		return nil
@@ -42,15 +73,30 @@ func replyNotURL(b *gotgbot.Bot, ctx *ext.Context) error {
 
 	_, err := b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrNotURL, ctx.EffectiveUser.LanguageCode),
 		&gotgbot.SendMessageOpts{ReplyToMessageId: ctx.EffectiveMessage.MessageId, ParseMode: "HTML"})
-	return err
+
+	if err != nil {
+		log.WithError(err).Error("while responding")
+	}
+
+	return ext.EndGroups
 }
 
 func replyNotSCURL(b *gotgbot.Bot, ctx *ext.Context) error {
+	log.
+		WithField("messageID", ctx.EffectiveMessage.MessageId).
+		WithField("value", ctx.EffectiveMessage.Text).
+		Info("not soundcloud url")
+
 	_ = telemetry.SendReport(ctx, false)
-	log.WithField("message", ctx.EffectiveMessage.Text).Info("got message without soundcloud url")
+
 	_, err := b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrNotSCURL, ctx.EffectiveUser.LanguageCode),
 		&gotgbot.SendMessageOpts{ReplyToMessageId: ctx.EffectiveMessage.MessageId, ParseMode: "HTML"})
-	return err
+
+	if err != nil {
+		log.WithError(err).Error("while responding")
+	}
+
+	return ext.EndGroups
 }
 
 // echo replies to a messages with its own contents
