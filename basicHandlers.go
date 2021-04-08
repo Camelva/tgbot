@@ -35,6 +35,11 @@ func replyNotURL(b *gotgbot.Bot, ctx *ext.Context) error {
 	_ = telemetry.SendReport(ctx, false)
 	// don't log people' text messages
 	log.Info("got message without url")
+
+	if ctx.EffectiveChat.Type != "private" {
+		return nil
+	}
+
 	_, err := b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrNotURL, ctx.EffectiveUser.LanguageCode),
 		&gotgbot.SendMessageOpts{ReplyToMessageId: ctx.EffectiveMessage.MessageId, ParseMode: "HTML"})
 	return err
