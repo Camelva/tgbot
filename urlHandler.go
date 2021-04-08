@@ -11,6 +11,7 @@ import (
 )
 
 func checkURL(b *gotgbot.Bot, ctx *ext.Context) error {
+	log.WithField("message", ctx.EffectiveMessage.Text).Info("got new message, checking..")
 	var success = false
 
 	defer func() {

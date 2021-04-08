@@ -4,7 +4,6 @@ import (
 	"github.com/kelseyhightower/envconfig"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
-	"log"
 )
 
 type Config struct {
@@ -43,7 +42,7 @@ func loadConfigs(envFile, configFile string) (cfg Config) {
 func readEnv(cfg *Config) {
 	err := envconfig.Process("", cfg)
 	if err != nil {
-		log.Println("can't read environment variables")
+		log.WithError(err).Warn("can't read environment variables")
 	}
 	return
 }
@@ -51,18 +50,18 @@ func readEnv(cfg *Config) {
 func readConfigFromFile(mode string, configFile string, cfg *Config) {
 	data, err := ioutil.ReadFile(configFile)
 	if err != nil {
-		log.Println("can't read config file")
+		log.WithError(err).Warn("can't read config file")
 	}
 
 	if mode == "env" {
 		if err := yaml.Unmarshal(data, cfg); err != nil {
-			log.Println("can't decode config file")
+			log.WithError(err).Warn("can't decode config file")
 		}
 	} else if mode == "settings" {
 		conf := new(Settings)
 
 		if err := yaml.Unmarshal(data, conf); err != nil {
-			log.Println("can't decode config file")
+			log.WithError(err).Warn("can't decode config file")
 		}
 		cfg.Settings = *conf
 	}

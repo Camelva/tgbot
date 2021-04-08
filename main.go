@@ -1,20 +1,24 @@
 package main
 
 import (
-	"fmt"
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers/filters"
-	"log"
+	"github.com/sirupsen/logrus"
+	stdLog "log"
 	"net/http"
 	"os"
 	"tgbot/telemetry"
 	"time"
 )
 
+var log *logrus.Logger
+
 func main() {
 	config := loadConfigs("env.yml", "config.yml")
+
+	log = initLog()
 
 	b, err := gotgbot.NewBot(config.Telegram.Token, &gotgbot.BotOpts{
 		Client:      http.Client{},
@@ -22,7 +26,7 @@ func main() {
 		PostTimeout: time.Minute * 5,
 	})
 	if err != nil {
-		panic("failed to create new bot: " + err.Error())
+		log.WithError(err).Fatal("failed to create new bot")
 	}
 
 	// need to init telemetry
@@ -30,10 +34,10 @@ func main() {
 
 	// Create updater and dispatcher.
 	updater := ext.NewUpdater(&ext.UpdaterOpts{
-		ErrorLog: log.New(os.Stderr, "ERROR", log.LstdFlags),
+		ErrorLog: stdLog.New(os.Stderr, "ERROR", stdLog.LstdFlags),
 		DispatcherOpts: ext.DispatcherOpts{
 			Error:    onError,
-			ErrorLog: log.New(os.Stderr, "ERROR", log.LstdFlags),
+			ErrorLog: stdLog.New(os.Stderr, "ERROR", stdLog.LstdFlags),
 		}})
 	dispatcher := updater.Dispatcher
 
@@ -51,14 +55,14 @@ func main() {
 	// Start receiving updates.
 	err = updater.StartPolling(b, &ext.PollingOpts{})
 	if err != nil {
-		panic("failed to start polling: " + err.Error())
+		log.WithError(err).Fatal("failed to start polling: ")
 	}
-	fmt.Printf("%s has been started...\n", b.User.Username)
+	log.Info("%s has been started...\n", b.User.Username)
 
 	// Idle, to keep updates coming in, and avoid bot stopping.
 	updater.Idle()
 }
 
 func onError(ctx *ext.Context, err error) {
-	log.Printf("%s while doing %s", err, ctx.EffectiveMessage.Text)
+	log.WithError(err).Error(ctx.EffectiveMessage.Text)
 }

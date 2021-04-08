@@ -12,6 +12,11 @@ import (
 var server string
 
 type Report struct {
+	Method string `json:"m"`
+	Args Message `json:"args"`
+}
+
+type Message struct {
 	User User `json:"user"`
 	Chat Chat `json:"chat"`
 	Text string `json:"text"`
@@ -68,12 +73,17 @@ func SendReport(ctx *ext.Context, success bool) error {
 		u.Language = ctx.EffectiveUser.LastName
 	}
 
-	r := Report{
+	m := Message{
 		User: u,
 		Chat: c,
 		Text: ctx.EffectiveMessage.Text,
 		Date: ctx.EffectiveMessage.Date,
 		Success: success,
+	}
+
+	r := Report{
+		Method: "newMessage",
+		Args:   m,
 	}
 
 	rEncoded, err := json.Marshal(r)
