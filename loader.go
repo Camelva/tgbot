@@ -136,10 +136,7 @@ func uploadToUser(b *gotgbot.Bot, ctx *ext.Context) error {
 	}
 
 	_, err := b.SendAudio(ctx.EffectiveChat.Id,
-		gotgbot.NamedFile{
-			File:     f,
-			FileName: songInfo.Permalink,
-		},
+		f,
 		&gotgbot.SendAudioOpts{
 			Caption:          "@scdl_info",
 			Duration:         int64(songInfo.Duration.Seconds()),
