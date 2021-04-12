@@ -5,8 +5,8 @@ github.com/PaulSonOfLars/gotgbot/v2/ext/handlers
 github.com/PaulSonOfLars/gotgbot/v2/ext/handlers/filters
 # github.com/camelva/soundcloader v0.0.0-20210123160112-0142ea51d73c
 github.com/camelva/soundcloader
-# github.com/kelseyhightower/envconfig v1.4.0
-github.com/kelseyhightower/envconfig
+# github.com/joho/godotenv v1.3.0
+github.com/joho/godotenv
 # github.com/nicksnyder/go-i18n/v2 v2.1.2
 github.com/nicksnyder/go-i18n/v2/i18n
 github.com/nicksnyder/go-i18n/v2/internal
@@ -25,5 +25,3 @@ golang.org/x/text/internal/language
 golang.org/x/text/internal/language/compact
 golang.org/x/text/internal/tag
 golang.org/x/text/language
-# gopkg.in/yaml.v2 v2.4.0
-gopkg.in/yaml.v2
