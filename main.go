@@ -9,6 +9,7 @@ import (
 	stdLog "log"
 	"net/http"
 	"os"
+	"os/signal"
 	"tgbot/telemetry"
 	"time"
 )
@@ -44,6 +45,32 @@ func main() {
 		}})
 	dispatcher := updater.Dispatcher
 
+	setHandlers(dispatcher)
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, os.Kill)
+	go func() {
+		<-c
+		_ = sendLogs(b)
+		_ = updater.Stop()
+	}()
+
+	// Start receiving updates.
+	err = updater.StartPolling(b, &ext.PollingOpts{})
+	if err != nil {
+		log.WithError(err).Fatal("failed to start polling: ")
+	}
+	log.Infof("%s has been started...", b.User.Username)
+
+	// Idle, to keep updates coming in, and avoid bot stopping.
+	updater.Idle()
+}
+
+func onError(ctx *ext.Context, err error) {
+	log.WithError(err).Error(ctx.EffectiveMessage.Text)
+}
+
+func setHandlers(dispatcher *ext.Dispatcher) {
 	// log first
 	dispatcher.AddHandlerToGroup(handlers.NewMessage(filters.All, logMessage), 0)
 
@@ -59,18 +86,4 @@ func main() {
 
 	// Lastly - default reply
 	dispatcher.AddHandlerToGroup(handlers.NewMessage(filters.All, replyNotURL), 2)
-
-	// Start receiving updates.
-	err = updater.StartPolling(b, &ext.PollingOpts{})
-	if err != nil {
-		log.WithError(err).Fatal("failed to start polling: ")
-	}
-	log.Infof("%s has been started...", b.User.Username)
-
-	// Idle, to keep updates coming in, and avoid bot stopping.
-	updater.Idle()
-}
-
-func onError(ctx *ext.Context, err error) {
-	log.WithError(err).Error(ctx.EffectiveMessage.Text)
 }
