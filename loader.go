@@ -50,11 +50,12 @@ func loadSong(b *gotgbot.Bot, ctx *ext.Context) (err error) {
 
 	defer os.RemoveAll(sClient.OutputFolder)
 
+	localLog := log.
+		WithField("value", parsedURL.String()).
+		WithField("messageID", ctx.EffectiveMessage.MessageId)
+
 	song, e := sClient.GetURL(parsedURL)
 	if e != nil {
-		localLog := log.
-			WithField("value", parsedURL.String()).
-			WithField("messageID", ctx.EffectiveMessage.MessageId)
 		if e == soundcloader.NotSong {
 			localLog.Info("not song url, exiting..")
 			_, _ = b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrUnsupportedFormat, ctx.EffectiveUser.LanguageCode),
@@ -69,9 +70,6 @@ func loadSong(b *gotgbot.Bot, ctx *ext.Context) (err error) {
 
 	location, err := song.GetNext()
 	if err != nil {
-		localLog := log.
-			WithField("value", parsedURL.String()).
-			WithField("messageID", ctx.EffectiveMessage.MessageId)
 		if err == soundcloader.EmptyStream {
 			localLog.Error("empty stream")
 			_, _ = b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrUnavailableSong, ctx.EffectiveUser.LanguageCode),
@@ -115,9 +113,9 @@ func uploadToUser(b *gotgbot.Bot, ctx *ext.Context) error {
 	}
 	delete(ctx.Data, "songInfo")
 
-	log.
-		WithField("messageID", ctx.EffectiveMessage.MessageId).
-		Info("fetched song, uploading to user..")
+	localLog := log.WithField("messageID", ctx.EffectiveMessage.MessageId)
+
+	localLog.Info("fetched song, uploading to user..")
 
 	f, e := os.Open(fileLocation)
 	defer func() {
@@ -125,10 +123,7 @@ func uploadToUser(b *gotgbot.Bot, ctx *ext.Context) error {
 		_ = os.Remove(fileLocation)
 	}()
 	if e != nil {
-		log.
-			WithField("messageID", ctx.EffectiveMessage.MessageId).
-			WithError(e).
-			Error("can't open song file")
+		localLog.WithError(e).Error("can't open song file")
 
 		_, _ = b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrUndefined(e), ctx.EffectiveUser.LanguageCode),
 			&gotgbot.SendMessageOpts{ReplyToMessageId: ctx.EffectiveMessage.MessageId, ParseMode: "HTML"})
