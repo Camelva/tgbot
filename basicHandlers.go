@@ -7,7 +7,7 @@ import (
 	"tgbot/telemetry"
 )
 
-func logMessage(b *gotgbot.Bot, ctx *ext.Context) error {
+func logMessage(_ *gotgbot.Bot, ctx *ext.Context) error {
 	// sticker or anything non-text
 	if ctx.EffectiveMessage.Text != "" {
 		log.
@@ -18,7 +18,7 @@ func logMessage(b *gotgbot.Bot, ctx *ext.Context) error {
 	return ext.ContinueGroups
 }
 
-func logCmd(b *gotgbot.Bot, ctx *ext.Context) error {
+func logCmd(_ *gotgbot.Bot, ctx *ext.Context) error {
 	log.
 		WithField("messageID", ctx.EffectiveMessage.MessageId).
 		WithField("value", ctx.EffectiveMessage.Text).
@@ -46,6 +46,23 @@ func cmdHelp(b *gotgbot.Bot, ctx *ext.Context) error {
 
 	if err != nil {
 		log.WithError(err).Error("while responding")
+	}
+
+	return ext.EndGroups
+}
+
+func cmdLogs(b *gotgbot.Bot, ctx *ext.Context) error {
+	if !isOwner(ctx.EffectiveUser.Id) {
+		return cmdUndefined(b, ctx)
+	}
+
+	e := sendLogs(b)
+	if e != nil {
+		_, err := b.SendMessage(ctx.EffectiveChat.Id, "can't send logs", nil)
+
+		if err != nil {
+			log.WithError(err).Error("while responding")
+		}
 	}
 
 	return ext.EndGroups

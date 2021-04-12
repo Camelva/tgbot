@@ -15,10 +15,13 @@ import (
 
 var log *logrus.Logger
 
+var OwnerID int64
+
 func main() {
 	log = initLog()
 
-	config := loadConfigs("env.yml", "config.yml")
+	config := loadConfigs(".env")
+	OwnerID = config.Telegram.OwnerID
 
 	b, err := gotgbot.NewBot(config.Telegram.Token, &gotgbot.BotOpts{
 		Client:      http.Client{},
@@ -48,6 +51,7 @@ func main() {
 	dispatcher.AddHandlerToGroup(handlers.NewMessage(filters.Command, logCmd), 1)
 	dispatcher.AddHandlerToGroup(handlers.NewCommand("start", cmdStart), 1)
 	dispatcher.AddHandlerToGroup(handlers.NewCommand("help", cmdHelp), 1)
+	dispatcher.AddHandlerToGroup(handlers.NewCommand("logs", cmdLogs), 1)
 	dispatcher.AddHandlerToGroup(handlers.NewMessage(filters.Command, cmdUndefined), 1)
 
 	// Then messages with url

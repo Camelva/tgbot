@@ -7,13 +7,13 @@ import (
 	"time"
 )
 
-func initLog() *logrus.Logger {
-	logrus.StandardLogger()
+var LogFile string
 
-	logFile := fmt.Sprintf("%s.log", time.Now().Format("2006-01-02 15-04"))
+func initLog() *logrus.Logger {
+	LogFile = fmt.Sprintf("%s.log", time.Now().Format("2006-01-02 15-04"))
 
 	l := logrus.New()
-	l.Hooks.Add(lfshook.NewHook(logFile, &logrus.JSONFormatter{}))
+	l.Hooks.Add(lfshook.NewHook(LogFile, &logrus.JSONFormatter{}))
 
 	l.SetLevel(logrus.TraceLevel)
 
