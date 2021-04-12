@@ -11,6 +11,9 @@ import (
 	"tgbot/resp"
 )
 
+// max allowed size is 50Mb
+var MaxSize int64 = 50 * 1024 * 1024
+
 func loadSong(b *gotgbot.Bot, ctx *ext.Context) (err error) {
 	tempMessage, ok := ctx.Data["tempMessage"].(*gotgbot.Message)
 	if !ok {
@@ -81,6 +84,22 @@ func loadSong(b *gotgbot.Bot, ctx *ext.Context) (err error) {
 		}
 		return err
 	}
+
+	stats, err := os.Stat(location)
+	if err != nil {
+		localLog.WithError(err).Error("file stat error")
+		_, _ = b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrUndefined(err), ctx.EffectiveUser.LanguageCode),
+			&gotgbot.SendMessageOpts{ReplyToMessageId: ctx.EffectiveMessage.MessageId})
+		return err
+	}
+
+	if stats.Size() >= MaxSize {
+		localLog.Info("file size limit")
+		_, _ = b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrSizeLimit, ctx.EffectiveUser.LanguageCode),
+			&gotgbot.SendMessageOpts{ReplyToMessageId: ctx.EffectiveMessage.MessageId})
+		return nil
+	}
+
 	tempMessage, err = tempMessage.EditText(b, resp.Get(resp.ProcessUploading, ctx.EffectiveUser.LanguageCode),
 		&gotgbot.EditMessageTextOpts{ParseMode: "HTML"})
 
