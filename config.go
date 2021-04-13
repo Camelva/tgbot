@@ -18,7 +18,7 @@ type Telegram struct {
 
 func loadConfigs(fileName string) (cfg Config) {
 	if err := godotenv.Load(fileName); err != nil {
-		log.Fatal("can't load config file")
+		log.Info("can't load config file")
 	}
 
 	if mode := os.Getenv("TGBOT_MODE"); mode != "" {
