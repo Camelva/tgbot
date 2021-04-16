@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"tgbot/storage"
 	"tgbot/telemetry"
 	"time"
 )
@@ -22,6 +23,7 @@ func main() {
 	log = initLog()
 
 	config := loadConfigs(".env")
+	storage.SetToken(config.Storage.Token)
 	OwnerID = config.Telegram.OwnerID
 
 	b, err := gotgbot.NewBot(config.Telegram.Token, &gotgbot.BotOpts{
