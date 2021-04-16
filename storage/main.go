@@ -10,7 +10,6 @@ import (
 	stdLog "log"
 	"mime/multipart"
 	"net/http"
-	"net/http/httputil"
 	"os"
 	"strconv"
 	"time"
@@ -100,17 +99,11 @@ func Upload(file *os.File) (string, error) {
 
 	r.Header.Set("Content-Type", w.FormDataContentType())
 
-	dump, _ := httputil.DumpRequest(r, true)
-	stdLog.Printf("%s", dump)
-
 	res, err := http.DefaultClient.Do(r)
 	if err != nil {
 		return "", fmt.Errorf("can't do request: %s", err)
 	}
 	defer res.Body.Close()
-
-	dump, _ = httputil.DumpResponse(res, true)
-	stdLog.Printf("%s", dump)
 
 	respData, err := ioutil.ReadAll(res.Body)
 	if err != nil {
