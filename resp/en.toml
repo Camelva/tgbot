@@ -29,13 +29,6 @@ Fetching = """Fetching song from soundcloud.."""
 
 Uploading = """Everything done. Uploading song to you.."""
 
-Storage = """This file's size is breaking telegram's limit. Trying to upload to external storage.."""
-
-StorageReady = """Your song is ready. It will be available to download for 10 days:
-
-- {{.link}}
-"""
-
 [err]
 NotURL = """I can't find any link in your message. 👀
 If there is some other text - try to remove everything else and send message again"""

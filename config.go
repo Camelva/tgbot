@@ -7,14 +7,13 @@ import (
 )
 
 type Config struct {
-	Telegram struct {
-		Token   string
-		OwnerID int64
-	}
-	Storage struct {
-		Token string
-	}
-	Mode string
+	Telegram Telegram
+	Mode     string
+}
+
+type Telegram struct {
+	Token   string
+	OwnerID int64
 }
 
 func loadConfigs(fileName string) (cfg Config) {
@@ -47,8 +46,5 @@ func loadConfigs(fileName string) (cfg Config) {
 		log.Fatal("token is required")
 	}
 
-	if token := os.Getenv("TGBOT_STORAGE_TOKEN"); token != "" {
-		cfg.Storage.Token = token
-	}
 	return cfg
 }

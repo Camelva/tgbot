@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"tgbot/resp"
-	"tgbot/storage"
 )
 
 // max allowed size is 50Mb
@@ -94,62 +93,20 @@ func loadSong(b *gotgbot.Bot, ctx *ext.Context) (err error) {
 		return err
 	}
 
-	ctx.Data["fileLocation"] = location
-
 	if stats.Size() >= MaxSize {
-		localLog.Info("file size limit, trying external storage")
-		tempMessage, _ = tempMessage.EditText(b,
-			resp.Get(resp.ProcessStorage, ctx.EffectiveUser.LanguageCode),
-			&gotgbot.EditMessageTextOpts{ParseMode: "HTML"})
-
-		return externalUpload(b, ctx)
+		localLog.Info("file size limit")
+		_, _ = b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrSizeLimit, ctx.EffectiveUser.LanguageCode),
+			&gotgbot.SendMessageOpts{ReplyToMessageId: ctx.EffectiveMessage.MessageId})
+		return nil
 	}
 
-	tempMessage, err = tempMessage.EditText(b,
-		resp.Get(resp.ProcessUploading, ctx.EffectiveUser.LanguageCode),
+	tempMessage, err = tempMessage.EditText(b, resp.Get(resp.ProcessUploading, ctx.EffectiveUser.LanguageCode),
 		&gotgbot.EditMessageTextOpts{ParseMode: "HTML"})
 
+	ctx.Data["fileLocation"] = location
 	ctx.Data["songInfo"] = song
 
 	return uploadToUser(b, ctx)
-}
-
-func externalUpload(b *gotgbot.Bot, ctx *ext.Context) error {
-	fileLocation, ok := ctx.Data["fileLocation"].(string)
-	if !ok {
-		e := errors.New("no fileLocation")
-		log.WithError(e).Error("internal error")
-
-		_, _ = b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrUndefined(e), ctx.EffectiveUser.LanguageCode),
-			&gotgbot.SendMessageOpts{ReplyToMessageId: ctx.EffectiveMessage.MessageId, ParseMode: "HTML"})
-		return e
-	}
-	delete(ctx.Data, "fileLocation")
-
-	f, err := os.Open(fileLocation)
-	if err != nil {
-		log.WithError(err).Error("can't open file to upload")
-		return err
-	}
-	defer func() {
-		_ = f.Close()
-	}()
-
-	link, err := storage.Upload(f)
-	if err != nil {
-		log.WithError(err).Error("can't upload file to external storage")
-		return err
-	}
-
-	_, err = b.SendMessage(
-		ctx.EffectiveChat.Id,
-		resp.Get(resp.ProcessStorageReady(link), ctx.EffectiveUser.LanguageCode),
-		&gotgbot.SendMessageOpts{ReplyToMessageId: ctx.EffectiveMessage.MessageId},
-	)
-	if err != nil {
-		log.WithError(err).Error("can't send message to user")
-	}
-	return nil
 }
 
 func uploadToUser(b *gotgbot.Bot, ctx *ext.Context) error {
@@ -180,6 +137,10 @@ func uploadToUser(b *gotgbot.Bot, ctx *ext.Context) error {
 	localLog.Info("fetched song, uploading to user..")
 
 	f, e := os.Open(fileLocation)
+	defer func() {
+		_ = f.Close()
+		_ = os.Remove(fileLocation)
+	}()
 	if e != nil {
 		localLog.WithError(e).Error("can't open song file")
 
@@ -187,9 +148,6 @@ func uploadToUser(b *gotgbot.Bot, ctx *ext.Context) error {
 			&gotgbot.SendMessageOpts{ReplyToMessageId: ctx.EffectiveMessage.MessageId, ParseMode: "HTML"})
 		return e
 	}
-	defer func() {
-		_ = f.Close()
-	}()
 
 	_, err := b.SendAudio(ctx.EffectiveChat.Id,
 		f,

@@ -22,27 +22,20 @@ func Get(s *i18n.LocalizeConfig, lang string) string {
 }
 
 var (
-	ProcessStart = &i18n.LocalizeConfig{MessageID: "process.Start"}
-	//ProcessQueue        = &i18n.LocalizeConfig{MessageID: "process.Queue"}
-	ProcessFetching     = &i18n.LocalizeConfig{MessageID: "process.Fetching"}
-	ProcessUploading    = &i18n.LocalizeConfig{MessageID: "process.Uploading"}
-	ProcessStorage      = &i18n.LocalizeConfig{MessageID: "process.Storage"}
-	ProcessStorageReady = func(s string) *i18n.LocalizeConfig {
-		return &i18n.LocalizeConfig{
-			MessageID:    "process.StorageReady",
-			TemplateData: map[string]string{"link": s},
-		}
-	}
+	ProcessStart     = &i18n.LocalizeConfig{MessageID: "process.Start"}
+	ProcessQueue     = &i18n.LocalizeConfig{MessageID: "process.Queue"}
+	ProcessFetching  = &i18n.LocalizeConfig{MessageID: "process.Fetching"}
+	ProcessUploading = &i18n.LocalizeConfig{MessageID: "process.Uploading"}
 
 	CmdStart     = &i18n.LocalizeConfig{MessageID: "cmd.Start"}
 	CmdHelp      = &i18n.LocalizeConfig{MessageID: "cmd.Help"}
 	CmdUndefined = &i18n.LocalizeConfig{MessageID: "cmd.Default"}
-
+	//
 	ErrNotURL            = &i18n.LocalizeConfig{MessageID: "err.NotURL"}
 	ErrNotSCURL          = &i18n.LocalizeConfig{MessageID: "err.NotSoundCloudURL"}
 	ErrUnsupportedFormat = &i18n.LocalizeConfig{MessageID: "err.UnsupportedFormat"}
 	//errUnsupportedService = "err.UnsupportedService"
-	//ErrSizeLimit       = &i18n.LocalizeConfig{MessageID: "err.SizeLimit"}
+	ErrSizeLimit       = &i18n.LocalizeConfig{MessageID: "err.SizeLimit"}
 	ErrUnavailableSong = &i18n.LocalizeConfig{MessageID: "err.UnavailableSong"}
 	ErrUndefined       = func(err error) *i18n.LocalizeConfig {
 		return &i18n.LocalizeConfig{
