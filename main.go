@@ -91,8 +91,8 @@ func setHandlers(dispatcher *ext.Dispatcher) {
 	hLogs := handlers.Command{Triggers: []rune{'/'}, AllowChannel: true, Command: "logs", Response: cmdLogs}
 	dispatcher.AddHandlerToGroup(hLogs, 1)
 
-	// - if no match withing defined commands
-	hUndefined := handlers.Message{AllowChannel: true, Filter: filters.Command, Response: cmdUndefined}
+	// - if no match within defined commands, but ignore if not private chat
+	hUndefined := handlers.Message{AllowChannel: false, Filter: filters.Command, Response: cmdUndefined}
 	dispatcher.AddHandlerToGroup(hUndefined, 1)
 
 	// Messages containing url
