@@ -106,6 +106,10 @@ func replyNotSCURL(b *gotgbot.Bot, ctx *ext.Context) error {
 
 	_ = telemetry.SendReport(ctx, false)
 
+	if ctx.EffectiveChat.Type != "private" {
+		return nil
+	}
+
 	_, err := b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrNotSCURL, getLang(ctx)),
 		&gotgbot.SendMessageOpts{ReplyToMessageId: ctx.EffectiveMessage.MessageId, ParseMode: "HTML"})
 
