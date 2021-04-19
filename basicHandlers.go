@@ -69,6 +69,10 @@ func cmdLogs(b *gotgbot.Bot, ctx *ext.Context) error {
 }
 
 func cmdUndefined(b *gotgbot.Bot, ctx *ext.Context) error {
+	if ctx.EffectiveChat.Type != "private" {
+		return ext.EndGroups
+	}
+
 	_, err := b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.CmdUndefined, getLang(ctx)),
 		&gotgbot.SendMessageOpts{ReplyToMessageId: ctx.EffectiveMessage.MessageId, ParseMode: "HTML"})
 
@@ -85,7 +89,7 @@ func replyNotURL(b *gotgbot.Bot, ctx *ext.Context) error {
 	_ = telemetry.SendReport(ctx, false)
 
 	if ctx.EffectiveChat.Type != "private" {
-		return nil
+		return ext.EndGroups
 	}
 
 	_, err := b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrNotURL, getLang(ctx)),
@@ -107,7 +111,7 @@ func replyNotSCURL(b *gotgbot.Bot, ctx *ext.Context) error {
 	_ = telemetry.SendReport(ctx, false)
 
 	if ctx.EffectiveChat.Type != "private" {
-		return nil
+		return ext.EndGroups
 	}
 
 	_, err := b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrNotSCURL, getLang(ctx)),
@@ -119,9 +123,3 @@ func replyNotSCURL(b *gotgbot.Bot, ctx *ext.Context) error {
 
 	return ext.EndGroups
 }
-
-// echo replies to a messages with its own contents
-//func echo(b *gotgbot.Bot, ctx *ext.Context) error {
-//	_, err := ctx.EffectiveMessage.Reply(b, ctx.EffectiveMessage.Text, nil)
-//	return err
-//}
