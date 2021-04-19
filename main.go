@@ -73,19 +73,33 @@ func onError(ctx *ext.Context, err error) {
 }
 
 func setHandlers(dispatcher *ext.Dispatcher) {
-	// log first
-	dispatcher.AddHandlerToGroup(handlers.NewMessage(filters.All, logMessage), 0)
+	// Global logging
+	hLogAll := handlers.Message{AllowChannel: true, Filter: filters.All, Response: logMessage}
+	dispatcher.AddHandlerToGroup(hLogAll, 0)
 
 	// Commands
-	dispatcher.AddHandlerToGroup(handlers.NewMessage(filters.Command, logCmd), 1)
-	dispatcher.AddHandlerToGroup(handlers.NewCommand("start", cmdStart), 1)
-	dispatcher.AddHandlerToGroup(handlers.NewCommand("help", cmdHelp), 1)
-	dispatcher.AddHandlerToGroup(handlers.NewCommand("logs", cmdLogs), 1)
-	dispatcher.AddHandlerToGroup(handlers.NewMessage(filters.Command, cmdUndefined), 1)
+	// - first log every command received
+	hLogCmd := handlers.Message{AllowChannel: true, Filter: filters.Command, Response: logCmd}
+	dispatcher.AddHandlerToGroup(hLogCmd, 1)
 
-	// Then messages with url
-	dispatcher.AddHandlerToGroup(handlers.NewMessage(filters.Entity("url"), checkURL), 2)
+	hStart := handlers.Command{Triggers: []rune{'/'}, AllowChannel: true, Command: "start", Response: cmdStart}
+	dispatcher.AddHandlerToGroup(hStart, 1)
 
-	// Lastly - default reply
-	dispatcher.AddHandlerToGroup(handlers.NewMessage(filters.All, replyNotURL), 2)
+	hHelp := handlers.Command{Triggers: []rune{'/'}, AllowChannel: true, Command: "help", Response: cmdHelp}
+	dispatcher.AddHandlerToGroup(hHelp, 1)
+
+	hLogs := handlers.Command{Triggers: []rune{'/'}, AllowChannel: true, Command: "logs", Response: cmdLogs}
+	dispatcher.AddHandlerToGroup(hLogs, 1)
+
+	// - if no match withing defined commands
+	hUndefined := handlers.Message{AllowChannel: true, Filter: filters.Command, Response: cmdUndefined}
+	dispatcher.AddHandlerToGroup(hUndefined, 1)
+
+	// Messages containing url
+	hURL := handlers.Message{AllowChannel: true, Filter: filters.Entity("url"), Response: checkURL}
+	dispatcher.AddHandlerToGroup(hURL, 2)
+
+	// Lastly - default reply if nothing match. Ignore channels (and groups too, but inside of handler)
+	hDefault := handlers.Message{AllowChannel: false, Filter: filters.All, Response: replyNotURL}
+	dispatcher.AddHandlerToGroup(hDefault, 2)
 }
