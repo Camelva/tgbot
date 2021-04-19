@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
 	"github.com/camelva/soundcloader"
@@ -191,10 +192,17 @@ func uploadToUser(b *gotgbot.Bot, ctx *ext.Context) error {
 		_ = f.Close()
 	}()
 
+	songCaption := fmt.Sprintf(
+		"<a href=\"%s\">%s</a>\n\n@scdl_info",
+		songInfo.Thumbnail,
+		resp.Get(resp.UtilGetCover, ctx.EffectiveUser.LanguageCode),
+	)
+
 	_, err := b.SendAudio(ctx.EffectiveChat.Id,
 		f,
 		&gotgbot.SendAudioOpts{
-			Caption:          "@scdl_info",
+			Caption:          songCaption,
+			ParseMode:        "HTML",
 			Duration:         int64(songInfo.Duration.Seconds()),
 			Performer:        songInfo.Author,
 			Title:            songInfo.Title,

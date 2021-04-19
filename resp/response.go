@@ -34,6 +34,8 @@ var (
 		}
 	}
 
+	UtilGetCover = &i18n.LocalizeConfig{MessageID: "util.GetCover"}
+
 	CmdStart     = &i18n.LocalizeConfig{MessageID: "cmd.Start"}
 	CmdHelp      = &i18n.LocalizeConfig{MessageID: "cmd.Help"}
 	CmdUndefined = &i18n.LocalizeConfig{MessageID: "cmd.Default"}

@@ -57,3 +57,6 @@ Default = """There is some undefined error with this song 🤔.
 Please try again or contact with developer.
 
 Error text: {{.errMessage}}"""
+
+[util]
+GetCover = """Download cover"""
