@@ -57,7 +57,7 @@ func checkURL(b *gotgbot.Bot, ctx *ext.Context) error {
 	}
 
 	// tell user we got their message
-	tmpMsg, err := b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ProcessStart, ctx.EffectiveUser.LanguageCode),
+	tmpMsg, err := b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ProcessStart, getLang(ctx)),
 		&gotgbot.SendMessageOpts{ReplyToMessageId: ctx.EffectiveMessage.MessageId, ParseMode: "HTML"})
 	if err != nil {
 		return err

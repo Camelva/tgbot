@@ -12,7 +12,7 @@ func logMessage(_ *gotgbot.Bot, ctx *ext.Context) error {
 	if ctx.EffectiveMessage.Text != "" {
 		log.
 			WithField("messageID", ctx.EffectiveMessage.MessageId).
-			WithField("userID", ctx.EffectiveUser.Id).
+			WithField("userID", getUserID(ctx)).
 			Info("Got new message")
 	}
 	return ext.ContinueGroups
@@ -30,7 +30,7 @@ func logCmd(_ *gotgbot.Bot, ctx *ext.Context) error {
 }
 
 func cmdStart(b *gotgbot.Bot, ctx *ext.Context) error {
-	_, err := b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.CmdStart, ctx.EffectiveUser.LanguageCode),
+	_, err := b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.CmdStart, getLang(ctx)),
 		&gotgbot.SendMessageOpts{ReplyToMessageId: ctx.EffectiveMessage.MessageId, ParseMode: "HTML"})
 
 	if err != nil {
@@ -41,7 +41,7 @@ func cmdStart(b *gotgbot.Bot, ctx *ext.Context) error {
 }
 
 func cmdHelp(b *gotgbot.Bot, ctx *ext.Context) error {
-	_, err := b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.CmdHelp, ctx.EffectiveUser.LanguageCode),
+	_, err := b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.CmdHelp, getLang(ctx)),
 		&gotgbot.SendMessageOpts{ReplyToMessageId: ctx.EffectiveMessage.MessageId, ParseMode: "HTML"})
 
 	if err != nil {
@@ -52,7 +52,7 @@ func cmdHelp(b *gotgbot.Bot, ctx *ext.Context) error {
 }
 
 func cmdLogs(b *gotgbot.Bot, ctx *ext.Context) error {
-	if !isOwner(ctx.EffectiveUser.Id) {
+	if !isOwner(getUserID(ctx)) {
 		return cmdUndefined(b, ctx)
 	}
 
@@ -69,7 +69,7 @@ func cmdLogs(b *gotgbot.Bot, ctx *ext.Context) error {
 }
 
 func cmdUndefined(b *gotgbot.Bot, ctx *ext.Context) error {
-	_, err := b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.CmdUndefined, ctx.EffectiveUser.LanguageCode),
+	_, err := b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.CmdUndefined, getLang(ctx)),
 		&gotgbot.SendMessageOpts{ReplyToMessageId: ctx.EffectiveMessage.MessageId, ParseMode: "HTML"})
 
 	if err != nil {
@@ -88,7 +88,7 @@ func replyNotURL(b *gotgbot.Bot, ctx *ext.Context) error {
 		return nil
 	}
 
-	_, err := b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrNotURL, ctx.EffectiveUser.LanguageCode),
+	_, err := b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrNotURL, getLang(ctx)),
 		&gotgbot.SendMessageOpts{ReplyToMessageId: ctx.EffectiveMessage.MessageId, ParseMode: "HTML"})
 
 	if err != nil {
@@ -106,7 +106,7 @@ func replyNotSCURL(b *gotgbot.Bot, ctx *ext.Context) error {
 
 	_ = telemetry.SendReport(ctx, false)
 
-	_, err := b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrNotSCURL, ctx.EffectiveUser.LanguageCode),
+	_, err := b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrNotSCURL, getLang(ctx)),
 		&gotgbot.SendMessageOpts{ReplyToMessageId: ctx.EffectiveMessage.MessageId, ParseMode: "HTML"})
 
 	if err != nil {

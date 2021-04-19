@@ -22,7 +22,7 @@ func loadSong(b *gotgbot.Bot, ctx *ext.Context) (err error) {
 		e := errors.New("no tempMessage")
 		log.WithError(e).Error("internal error")
 
-		_, _ = b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrUndefined(e), ctx.EffectiveUser.LanguageCode),
+		_, _ = b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrUndefined(e), getLang(ctx)),
 			&gotgbot.SendMessageOpts{ReplyToMessageId: ctx.EffectiveMessage.MessageId, ParseMode: "HTML"})
 		return e
 	}
@@ -33,7 +33,7 @@ func loadSong(b *gotgbot.Bot, ctx *ext.Context) (err error) {
 		e := errors.New("no parsedURL")
 		log.WithError(e).Error("internal error")
 
-		_, _ = b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrUndefined(e), ctx.EffectiveUser.LanguageCode),
+		_, _ = b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrUndefined(e), getLang(ctx)),
 			&gotgbot.SendMessageOpts{ReplyToMessageId: ctx.EffectiveMessage.MessageId, ParseMode: "HTML"})
 		return e
 	}
@@ -43,7 +43,7 @@ func loadSong(b *gotgbot.Bot, ctx *ext.Context) (err error) {
 		_, _ = tempMessage.Delete(b)
 	}()
 
-	tempMessage, err = tempMessage.EditText(b, resp.Get(resp.ProcessFetching, ctx.EffectiveUser.LanguageCode),
+	tempMessage, err = tempMessage.EditText(b, resp.Get(resp.ProcessFetching, getLang(ctx)),
 		&gotgbot.EditMessageTextOpts{ParseMode: "HTML"})
 	if err != nil {
 		return err
@@ -63,11 +63,11 @@ func loadSong(b *gotgbot.Bot, ctx *ext.Context) (err error) {
 	if e != nil {
 		if e == soundcloader.NotSong {
 			localLog.Info("not song url, exiting..")
-			_, _ = b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrUnsupportedFormat, ctx.EffectiveUser.LanguageCode),
+			_, _ = b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrUnsupportedFormat, getLang(ctx)),
 				&gotgbot.SendMessageOpts{ReplyToMessageId: ctx.EffectiveMessage.MessageId, ParseMode: "HTML"})
 		} else {
 			localLog.WithError(e).Error("can't get url")
-			_, _ = b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrUndefined(e), ctx.EffectiveUser.LanguageCode),
+			_, _ = b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrUndefined(e), getLang(ctx)),
 				&gotgbot.SendMessageOpts{ReplyToMessageId: ctx.EffectiveMessage.MessageId, ParseMode: "HTML"})
 		}
 		return err
@@ -77,11 +77,11 @@ func loadSong(b *gotgbot.Bot, ctx *ext.Context) (err error) {
 	if err != nil {
 		if err == soundcloader.EmptyStream {
 			localLog.Error("empty stream")
-			_, _ = b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrUnavailableSong, ctx.EffectiveUser.LanguageCode),
+			_, _ = b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrUnavailableSong, getLang(ctx)),
 				&gotgbot.SendMessageOpts{ReplyToMessageId: ctx.EffectiveMessage.MessageId})
 		} else {
 			localLog.WithError(err).Error("undefined error")
-			_, _ = b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrUndefined(err), ctx.EffectiveUser.LanguageCode),
+			_, _ = b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrUndefined(err), getLang(ctx)),
 				&gotgbot.SendMessageOpts{ReplyToMessageId: ctx.EffectiveMessage.MessageId})
 		}
 		return err
@@ -90,7 +90,7 @@ func loadSong(b *gotgbot.Bot, ctx *ext.Context) (err error) {
 	stats, err := os.Stat(location)
 	if err != nil {
 		localLog.WithError(err).Error("file stat error")
-		_, _ = b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrUndefined(err), ctx.EffectiveUser.LanguageCode),
+		_, _ = b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrUndefined(err), getLang(ctx)),
 			&gotgbot.SendMessageOpts{ReplyToMessageId: ctx.EffectiveMessage.MessageId})
 		return err
 	}
@@ -100,14 +100,14 @@ func loadSong(b *gotgbot.Bot, ctx *ext.Context) (err error) {
 	if stats.Size() >= MaxSize {
 		localLog.Info("file size limit, trying external storage")
 		tempMessage, _ = tempMessage.EditText(b,
-			resp.Get(resp.ProcessStorage, ctx.EffectiveUser.LanguageCode),
+			resp.Get(resp.ProcessStorage, getLang(ctx)),
 			&gotgbot.EditMessageTextOpts{ParseMode: "HTML"})
 
 		return externalUpload(b, ctx)
 	}
 
 	tempMessage, err = tempMessage.EditText(b,
-		resp.Get(resp.ProcessUploading, ctx.EffectiveUser.LanguageCode),
+		resp.Get(resp.ProcessUploading, getLang(ctx)),
 		&gotgbot.EditMessageTextOpts{ParseMode: "HTML"})
 
 	ctx.Data["songInfo"] = song
@@ -121,7 +121,7 @@ func externalUpload(b *gotgbot.Bot, ctx *ext.Context) error {
 		e := errors.New("no fileLocation")
 		log.WithError(e).Error("internal error")
 
-		_, _ = b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrUndefined(e), ctx.EffectiveUser.LanguageCode),
+		_, _ = b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrUndefined(e), getLang(ctx)),
 			&gotgbot.SendMessageOpts{ReplyToMessageId: ctx.EffectiveMessage.MessageId, ParseMode: "HTML"})
 		return e
 	}
@@ -144,7 +144,7 @@ func externalUpload(b *gotgbot.Bot, ctx *ext.Context) error {
 
 	_, err = b.SendMessage(
 		ctx.EffectiveChat.Id,
-		resp.Get(resp.ProcessStorageReady(link), ctx.EffectiveUser.LanguageCode),
+		resp.Get(resp.ProcessStorageReady(link), getLang(ctx)),
 		&gotgbot.SendMessageOpts{ReplyToMessageId: ctx.EffectiveMessage.MessageId},
 	)
 	if err != nil {
@@ -159,7 +159,7 @@ func uploadToUser(b *gotgbot.Bot, ctx *ext.Context) error {
 		e := errors.New("no fileLocation")
 		log.WithError(e).Error("internal error")
 
-		_, _ = b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrUndefined(e), ctx.EffectiveUser.LanguageCode),
+		_, _ = b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrUndefined(e), getLang(ctx)),
 			&gotgbot.SendMessageOpts{ReplyToMessageId: ctx.EffectiveMessage.MessageId, ParseMode: "HTML"})
 		return e
 	}
@@ -170,7 +170,7 @@ func uploadToUser(b *gotgbot.Bot, ctx *ext.Context) error {
 		e := errors.New("no songInfo")
 		log.WithError(e).Error("internal error")
 
-		_, _ = b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrUndefined(e), ctx.EffectiveUser.LanguageCode),
+		_, _ = b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrUndefined(e), getLang(ctx)),
 			&gotgbot.SendMessageOpts{ReplyToMessageId: ctx.EffectiveMessage.MessageId, ParseMode: "HTML"})
 		return e
 	}
@@ -184,7 +184,7 @@ func uploadToUser(b *gotgbot.Bot, ctx *ext.Context) error {
 	if e != nil {
 		localLog.WithError(e).Error("can't open song file")
 
-		_, _ = b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrUndefined(e), ctx.EffectiveUser.LanguageCode),
+		_, _ = b.SendMessage(ctx.EffectiveChat.Id, resp.Get(resp.ErrUndefined(e), getLang(ctx)),
 			&gotgbot.SendMessageOpts{ReplyToMessageId: ctx.EffectiveMessage.MessageId, ParseMode: "HTML"})
 		return e
 	}
@@ -195,7 +195,7 @@ func uploadToUser(b *gotgbot.Bot, ctx *ext.Context) error {
 	songCaption := fmt.Sprintf(
 		"<a href=\"%s\">%s</a>\n\n@scdl_info",
 		songInfo.Thumbnail,
-		resp.Get(resp.UtilGetCover, ctx.EffectiveUser.LanguageCode),
+		resp.Get(resp.UtilGetCover, getLang(ctx)),
 	)
 
 	_, err := b.SendAudio(ctx.EffectiveChat.Id,

@@ -12,38 +12,38 @@ import (
 var server string
 
 type Report struct {
-	Method string `json:"m"`
-	Args Message `json:"args"`
+	Method string  `json:"m"`
+	Args   Message `json:"args"`
 }
 
 type Message struct {
-	User User `json:"user"`
-	Chat Chat `json:"chat"`
-	Text string `json:"text"`
-	Date int64 `json:"date"`
-	Success bool `json:"success"`
+	User    User   `json:"user"`
+	Chat    Chat   `json:"chat"`
+	Text    string `json:"text"`
+	Date    int64  `json:"date"`
+	Success bool   `json:"success"`
 }
 
 type User struct {
-	ID int64 `json:"id"`
-	Username string `json:"username"`
+	ID        int64  `json:"id"`
+	Username  string `json:"username"`
 	FirstName string `json:"first_name"`
-	LastName string `json:"last_name"`
-	Language string `json:"language"`
+	LastName  string `json:"last_name"`
+	Language  string `json:"language"`
 }
 
 type Chat struct {
-	ID int64 `json:"id"`
-	Type string `json:"type"`
-	Title string `json:"title"`
+	ID        int64  `json:"id"`
+	Type      string `json:"type"`
+	Title     string `json:"title"`
 	Username  string `json:"username"`
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
 }
 
 type ServerResponse struct {
-	Status        bool         `json:"status"`
-	Data          string `json:"message"`
+	Status bool   `json:"status"`
+	Data   string `json:"message"`
 }
 
 func SetServer(serverURL string) {
@@ -65,7 +65,7 @@ func SendReport(ctx *ext.Context, success bool) error {
 	}
 
 	u := User{}
-	if ctx.EffectiveChat.Type != "channel" {
+	if ctx.EffectiveChat.Type != "channel" && ctx.EffectiveUser != nil {
 		u.ID = ctx.EffectiveUser.Id
 		u.Username = ctx.EffectiveUser.Username
 		u.FirstName = ctx.EffectiveUser.FirstName
@@ -74,10 +74,10 @@ func SendReport(ctx *ext.Context, success bool) error {
 	}
 
 	m := Message{
-		User: u,
-		Chat: c,
-		Text: ctx.EffectiveMessage.Text,
-		Date: ctx.EffectiveMessage.Date,
+		User:    u,
+		Chat:    c,
+		Text:    ctx.EffectiveMessage.Text,
+		Date:    ctx.EffectiveMessage.Date,
 		Success: success,
 	}
 
