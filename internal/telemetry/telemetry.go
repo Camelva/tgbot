@@ -9,8 +9,6 @@ import (
 	"net/http"
 )
 
-var server string
-
 type Client struct {
 	server string
 }
@@ -74,7 +72,7 @@ func (c *Client) sendReport(r Report) error {
 	}
 
 	var userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:73.0) Gecko/20100101 Firefox/73.0"
-	req, err := http.NewRequest(http.MethodPost, server, bytes.NewReader(rEncoded))
+	req, err := http.NewRequest(http.MethodPost, c.server, bytes.NewReader(rEncoded))
 	if err != nil {
 		return xerrors.Errorf("can't build request: %w", err)
 	}

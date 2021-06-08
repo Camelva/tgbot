@@ -40,9 +40,8 @@ func GetOwner() int64 {
 }
 
 func (s *Sender) IsOwner(msg *gotgbot.Message) bool {
-	//owner := GetOwner()
 	if s.OwnerID == 0 {
-		return false
+		s.OwnerID = GetOwner()
 	}
 
 	return GetUserID(msg) == s.OwnerID
