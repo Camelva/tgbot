@@ -53,6 +53,9 @@ Most likely because of regional restrictions and i can't bypass it by now"""
 SizeLimit = """Looks like this song weighs too much.
 Telegram limits uploading files size to 50mb and we can't avoid this limit."""
 
+Internal = """Internal error, please try again later.
+Error: <code>{{.errMessage}}</code>"""
+
 Default = """There is some undefined error with this song 🤔.
 Please try again or contact with developer.
 
