@@ -52,12 +52,16 @@ func ProcessURL(sender *mux.Sender, ctx *ext.Context) {
 	if receivedURL == "" {
 		// non-valid url
 		localLog.Info("no valid url here, finishing..")
-		_, _ = sender.ReplyToMessage(
-			context.Background(),
-			ctx.EffectiveMessage,
-			sender.Resp.Get(tr.ErrNotURL, tr.GetLang(ctx.Message)),
-			nil,
-		)
+
+		// dont send error outside of private chat
+		if ctx.EffectiveChat.Type == "private" {
+			_, _ = sender.ReplyToMessage(
+				context.Background(),
+				ctx.EffectiveMessage,
+				sender.Resp.Get(tr.ErrNotURL, tr.GetLang(ctx.Message)),
+				nil,
+			)
+		}
 		return
 	}
 
@@ -65,12 +69,16 @@ func ProcessURL(sender *mux.Sender, ctx *ext.Context) {
 	if urlInfo == nil {
 		// not SoundCloud url
 		localLog.Info("no valid SoundCloud url here, finishing..")
-		_, _ = sender.ReplyToMessage(
-			context.Background(),
-			ctx.EffectiveMessage,
-			sender.Resp.Get(tr.ErrNotSCURL, tr.GetLang(ctx.Message)),
-			nil,
-		)
+
+		// dont send error outside of private chat
+		if ctx.EffectiveChat.Type == "private" {
+			_, _ = sender.ReplyToMessage(
+				context.Background(),
+				ctx.EffectiveMessage,
+				sender.Resp.Get(tr.ErrNotSCURL, tr.GetLang(ctx.Message)),
+				nil,
+			)
+		}
 		return
 	}
 
