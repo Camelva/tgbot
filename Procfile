@@ -1,1 +1,1 @@
-console: bin/bot
+web: bin/bot

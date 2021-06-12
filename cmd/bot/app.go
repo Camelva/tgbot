@@ -4,11 +4,13 @@ import (
 	"context"
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
+	"go.uber.org/multierr"
 	"go.uber.org/zap"
 	"golang.org/x/xerrors"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"tgbot/internal/mux"
 	tr "tgbot/internal/resp"
 	"tgbot/internal/storage"
@@ -89,25 +91,12 @@ func (a *App) Close() error {
 }
 
 func (a *App) Run(ctx context.Context) (err error) {
-	// webhooks in future
-	//port, err := strconv.Atoi(os.Getenv("PORT"))
-	//if err != nil || port == 0 {
-	//	port = 443
-	//}
-	//
-	//if err = a.updater.StartWebhook(a.client, ext.WebhookOpts{
-	//	URLPath: a.client.Token,
-	//	Port: port,
-	//}); err != nil {
-	//	a.logger.Error("failed to start webhook", zap.Error(err))
-	//	return err
-	//}
-
-	err = a.updater.StartPolling(a.client, &ext.PollingOpts{})
-	if err != nil {
-		a.logger.Error("failed to start polling", zap.Error(err))
-		return err
+	if err := startWebhook(a); err != nil {
+		if err2 := startPolling(a); err2 != nil {
+			return multierr.Append(err, err2)
+		}
 	}
+
 	a.logger.Info("bot has been started", zap.String("username", a.client.User.Username))
 
 	go a.updater.Idle()
@@ -117,4 +106,43 @@ func (a *App) Run(ctx context.Context) (err error) {
 		a.logger.Info("context was cancelled, stop polling..")
 		return a.updater.Stop()
 	}
+}
+
+func startWebhook(a *App) error {
+	port, err := strconv.Atoi(os.Getenv("PORT"))
+	if err != nil || port == 0 {
+		port = 443
+	}
+
+	domain := os.Getenv("WEBHOOK_DOMAIN")
+	if domain == "" {
+		return xerrors.New("webhook domain unset")
+	}
+
+	opts := ext.WebhookOpts{
+		URLPath: a.client.Token,
+		Port:    port,
+	}
+	wHookPath := opts.GetWebhookURL(domain)
+
+	if err := a.updater.StartWebhook(a.client, opts); err != nil {
+		return xerrors.Errorf("failed to start webhook: %w", err)
+	}
+
+	if _, err := a.client.SetWebhook(wHookPath, nil); err != nil {
+		return xerrors.Errorf("failed to set webhook: %w", err)
+	}
+	return nil
+}
+
+func startPolling(a *App) error {
+	_, err := a.client.DeleteWebhook(nil)
+	if err != nil {
+		return xerrors.Errorf("delete webhook failed: %w", err)
+	}
+
+	if err := a.updater.StartPolling(a.client, nil); err != nil {
+		return xerrors.Errorf("failed to start polling: %w", err)
+	}
+	return nil
 }
