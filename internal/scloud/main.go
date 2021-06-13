@@ -245,7 +245,7 @@ func uploadSong(sender *mux.Sender, ctx *ext.Context, songInfo *soundcloader.Son
 
 	if _, err := sender.SendAudio(
 		context.Background(),
-		ctx.EffectiveMessage.Chat.Id,
+		ctx.EffectiveChat.Id,
 		f,
 		&gotgbot.SendAudioOpts{
 			Caption:          songCaption,

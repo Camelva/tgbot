@@ -18,6 +18,7 @@ func LogMessage(s *mux.Sender, ctx *ext.Context) error {
 	s.Logger.Info("Got new message",
 		zap.Int64("messageID", ctx.EffectiveMessage.MessageId),
 		zap.Int64("userID", mux.GetUserID(ctx.EffectiveMessage)),
+		zap.Int64("chatID", ctx.EffectiveChat.Id),
 	)
 	return ext.ContinueGroups
 }
