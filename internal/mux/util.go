@@ -44,5 +44,13 @@ func (s *Sender) IsOwner(msg *gotgbot.Message) bool {
 		s.OwnerID = GetOwner()
 	}
 
-	return GetUserID(msg) == s.OwnerID
+	// OwnerID may be id of certain user, group or channel.
+	// Make sure to check all of them
+	if msg.From != nil {
+		if msg.From.Id == s.OwnerID {
+			return true
+		}
+	}
+
+	return msg.Chat.Id == s.OwnerID
 }

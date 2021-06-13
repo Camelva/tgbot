@@ -74,7 +74,7 @@ func SendLogs(s *mux.Sender, ctx *ext.Context) error {
 		return ext.ContinueGroups
 	}
 
-	if err := s.SendLogsToOwner(); err != nil {
+	if err := s.ReportLogs(); err != nil {
 		s.Logger.Error("can't send logs", zap.Error(err))
 	}
 	return ext.EndGroups

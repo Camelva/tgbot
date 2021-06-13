@@ -57,7 +57,7 @@ func DefaultLogRetry(s *Sender) func(error, time.Duration) {
 	}
 }
 
-func (s *Sender) SendLogsToOwner() (rerr error) {
+func (s *Sender) ReportLogs() (rerr error) {
 	if s.OwnerID == 0 {
 		id := GetOwner()
 		if id == 0 {

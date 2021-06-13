@@ -82,7 +82,7 @@ func InitApp(logger *zap.Logger, logFile string) (*App, error) {
 
 func (a *App) Close() error {
 	a.logger.Sugar().Info("closing..")
-	if err := a.mux.SendLogsToOwner(); err != nil {
+	if err := a.mux.ReportLogs(); err != nil {
 		a.logger.Error("can't send logs to owner: %w", zap.Error(err))
 	}
 
