@@ -28,7 +28,7 @@ func LogCommand(s *mux.Sender, ctx *ext.Context) error {
 		zap.String("value", ctx.EffectiveMessage.Text),
 	)
 
-	if err := s.Stats.Report(ctx.Message, false); err != nil {
+	if err := s.Stats.Report(ctx.EffectiveMessage, false); err != nil {
 		s.Logger.Error("can't send report", zap.Error(err))
 	}
 
@@ -42,7 +42,7 @@ func Start(s *mux.Sender, ctx *ext.Context) error {
 	_, err := s.ReplyToMessage(
 		cntxt,
 		ctx.EffectiveMessage,
-		s.Resp.Get(tr.CmdStart, tr.GetLang(ctx.Message)),
+		s.Resp.Get(tr.CmdStart, tr.GetLang(ctx.EffectiveMessage)),
 		nil,
 	)
 	if err != nil {
@@ -59,7 +59,7 @@ func Help(s *mux.Sender, ctx *ext.Context) error {
 	_, err := s.ReplyToMessage(
 		cntxt,
 		ctx.EffectiveMessage,
-		s.Resp.Get(tr.CmdHelp, tr.GetLang(ctx.Message)),
+		s.Resp.Get(tr.CmdHelp, tr.GetLang(ctx.EffectiveMessage)),
 		nil,
 	)
 	if err != nil {
@@ -92,7 +92,7 @@ func Undefined(s *mux.Sender, ctx *ext.Context) error {
 	_, err := s.ReplyToMessage(
 		cntxt,
 		ctx.EffectiveMessage,
-		s.Resp.Get(tr.CmdUndefined, tr.GetLang(ctx.Message)),
+		s.Resp.Get(tr.CmdUndefined, tr.GetLang(ctx.EffectiveMessage)),
 		nil,
 	)
 	if err != nil {
@@ -119,7 +119,7 @@ func Default(s *mux.Sender, ctx *ext.Context) error {
 	_, err := s.ReplyToMessage(
 		cntxt,
 		ctx.EffectiveMessage,
-		s.Resp.Get(tr.ErrNotURL, tr.GetLang(ctx.Message)),
+		s.Resp.Get(tr.ErrNotURL, tr.GetLang(ctx.EffectiveMessage)),
 		nil,
 	)
 	if err != nil {

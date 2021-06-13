@@ -23,7 +23,7 @@ func ProcessURL(sender *mux.Sender, ctx *ext.Context) {
 	tempMessage, err := sender.ReplyToMessage(
 		context.Background(),
 		ctx.EffectiveMessage,
-		sender.Resp.Get(tr.ProcessStart, tr.GetLang(ctx.Message)),
+		sender.Resp.Get(tr.ProcessStart, tr.GetLang(ctx.EffectiveMessage)),
 		nil,
 	)
 	if err != nil {
@@ -42,7 +42,7 @@ func ProcessURL(sender *mux.Sender, ctx *ext.Context) {
 		_, _ = sender.ReplyToMessage(
 			context.Background(),
 			ctx.EffectiveMessage,
-			sender.Resp.Get(tr.ErrNotURL, tr.GetLang(ctx.Message)),
+			sender.Resp.Get(tr.ErrNotURL, tr.GetLang(ctx.EffectiveMessage)),
 			nil,
 		)
 		return
@@ -58,7 +58,7 @@ func ProcessURL(sender *mux.Sender, ctx *ext.Context) {
 			_, _ = sender.ReplyToMessage(
 				context.Background(),
 				ctx.EffectiveMessage,
-				sender.Resp.Get(tr.ErrNotURL, tr.GetLang(ctx.Message)),
+				sender.Resp.Get(tr.ErrNotURL, tr.GetLang(ctx.EffectiveMessage)),
 				nil,
 			)
 		}
@@ -75,7 +75,7 @@ func ProcessURL(sender *mux.Sender, ctx *ext.Context) {
 			_, _ = sender.ReplyToMessage(
 				context.Background(),
 				ctx.EffectiveMessage,
-				sender.Resp.Get(tr.ErrNotSCURL, tr.GetLang(ctx.Message)),
+				sender.Resp.Get(tr.ErrNotSCURL, tr.GetLang(ctx.EffectiveMessage)),
 				nil,
 			)
 		}
@@ -98,7 +98,7 @@ func fetchSong(sender *mux.Sender, ctx *ext.Context, urlInfo *soundcloader.URLIn
 	tempMessage, err = sender.EditMessage(
 		context.Background(),
 		tempMessage,
-		sender.Resp.Get(tr.ProcessFetching, tr.GetLang(ctx.Message)),
+		sender.Resp.Get(tr.ProcessFetching, tr.GetLang(ctx.EffectiveMessage)),
 		nil,
 	)
 	if err != nil {
@@ -122,7 +122,7 @@ func fetchSong(sender *mux.Sender, ctx *ext.Context, urlInfo *soundcloader.URLIn
 			_, _ = sender.ReplyToMessage(
 				context.Background(),
 				ctx.EffectiveMessage,
-				sender.Resp.Get(tr.ErrUnsupportedFormat, tr.GetLang(ctx.Message)),
+				sender.Resp.Get(tr.ErrUnsupportedFormat, tr.GetLang(ctx.EffectiveMessage)),
 				nil,
 			)
 			return
@@ -131,7 +131,7 @@ func fetchSong(sender *mux.Sender, ctx *ext.Context, urlInfo *soundcloader.URLIn
 		_, _ = sender.ReplyToMessage(
 			context.Background(),
 			ctx.EffectiveMessage,
-			sender.Resp.Get(tr.ErrUndefined(err), tr.GetLang(ctx.Message)),
+			sender.Resp.Get(tr.ErrUndefined(err), tr.GetLang(ctx.EffectiveMessage)),
 			nil,
 		)
 		return
@@ -144,7 +144,7 @@ func fetchSong(sender *mux.Sender, ctx *ext.Context, urlInfo *soundcloader.URLIn
 			_, _ = sender.ReplyToMessage(
 				context.Background(),
 				ctx.EffectiveMessage,
-				sender.Resp.Get(tr.ErrUnavailableSong, tr.GetLang(ctx.Message)),
+				sender.Resp.Get(tr.ErrUnavailableSong, tr.GetLang(ctx.EffectiveMessage)),
 				nil,
 			)
 			return
@@ -153,7 +153,7 @@ func fetchSong(sender *mux.Sender, ctx *ext.Context, urlInfo *soundcloader.URLIn
 		_, _ = sender.ReplyToMessage(
 			context.Background(),
 			ctx.EffectiveMessage,
-			sender.Resp.Get(tr.ErrUndefined(err), tr.GetLang(ctx.Message)),
+			sender.Resp.Get(tr.ErrUndefined(err), tr.GetLang(ctx.EffectiveMessage)),
 			nil,
 		)
 		return
@@ -166,7 +166,7 @@ func fetchSong(sender *mux.Sender, ctx *ext.Context, urlInfo *soundcloader.URLIn
 		_, _ = sender.ReplyToMessage(
 			context.Background(),
 			ctx.EffectiveMessage,
-			sender.Resp.Get(tr.ErrInternal(fmt.Errorf("can't read file")), tr.GetLang(ctx.Message)),
+			sender.Resp.Get(tr.ErrInternal(fmt.Errorf("can't read file")), tr.GetLang(ctx.EffectiveMessage)),
 			nil,
 		)
 		return
@@ -178,7 +178,7 @@ func fetchSong(sender *mux.Sender, ctx *ext.Context, urlInfo *soundcloader.URLIn
 		_, _ = sender.EditMessage(
 			context.Background(),
 			tempMessage,
-			sender.Resp.Get(tr.ProcessStorage, tr.GetLang(ctx.Message)),
+			sender.Resp.Get(tr.ProcessStorage, tr.GetLang(ctx.EffectiveMessage)),
 			nil,
 		)
 
@@ -187,14 +187,14 @@ func fetchSong(sender *mux.Sender, ctx *ext.Context, urlInfo *soundcloader.URLIn
 			_, _ = sender.ReplyToMessage(
 				context.Background(),
 				ctx.EffectiveMessage,
-				sender.Resp.Get(tr.ErrInternal(err), tr.GetLang(ctx.Message)),
+				sender.Resp.Get(tr.ErrInternal(err), tr.GetLang(ctx.EffectiveMessage)),
 				nil,
 			)
 		} else {
 			_, _ = sender.ReplyToMessage(
 				context.Background(),
 				ctx.EffectiveMessage,
-				sender.Resp.Get(tr.ProcessStorageReady(link), tr.GetLang(ctx.Message)),
+				sender.Resp.Get(tr.ProcessStorageReady(link), tr.GetLang(ctx.EffectiveMessage)),
 				nil,
 			)
 		}
@@ -205,7 +205,7 @@ func fetchSong(sender *mux.Sender, ctx *ext.Context, urlInfo *soundcloader.URLIn
 	if _, err = sender.EditMessage(
 		context.Background(),
 		tempMessage,
-		sender.Resp.Get(tr.ProcessUploading, tr.GetLang(ctx.Message)),
+		sender.Resp.Get(tr.ProcessUploading, tr.GetLang(ctx.EffectiveMessage)),
 		nil,
 	); err != nil {
 		// can't edit message after retrying, should stop now
@@ -228,7 +228,7 @@ func uploadSong(sender *mux.Sender, ctx *ext.Context, songInfo *soundcloader.Son
 		_, _ = sender.ReplyToMessage(
 			context.Background(),
 			ctx.EffectiveMessage,
-			sender.Resp.Get(tr.ErrInternal(fmt.Errorf("can't open file")), tr.GetLang(ctx.Message)),
+			sender.Resp.Get(tr.ErrInternal(fmt.Errorf("can't open file")), tr.GetLang(ctx.EffectiveMessage)),
 			nil,
 		)
 		return
@@ -240,7 +240,7 @@ func uploadSong(sender *mux.Sender, ctx *ext.Context, songInfo *soundcloader.Son
 	songCaption := fmt.Sprintf(
 		"<a href=\"%s\">%s</a>\n\n@scdl_info",
 		songInfo.Thumbnail,
-		sender.Resp.Get(tr.UtilGetCover, tr.GetLang(ctx.Message)),
+		sender.Resp.Get(tr.UtilGetCover, tr.GetLang(ctx.EffectiveMessage)),
 	)
 
 	if _, err := sender.SendAudio(
