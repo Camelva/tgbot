@@ -162,8 +162,7 @@ func uploadSong(sender *mux.Sender, ctx *ext.Context, songInfo *soundcloader.Son
 
 	songCaption := sender.Resp.Get(tr.ProcessReady(
 		songInfo.Thumbnail,
-		songInfo.Permalink,
-		//fmt.Sprintf("https://youtu.be/%s", video.ID),
+		songInfo.PermalinkURL,
 	), tr.GetLang(ctx.EffectiveMessage))
 
 	if _, err := sender.SendAudio(sender.AppCtx, ctx.EffectiveChat.Id, f,
