@@ -12,7 +12,7 @@ import (
 )
 
 func runBot(ctx context.Context, logger *zap.Logger, logFile string) (rerr error) {
-	app, err := InitApp(logger, logFile)
+	app, err := InitApp(ctx, logger, logFile)
 	if err != nil {
 		return xerrors.Errorf("initialize: %w", err)
 	}
@@ -59,6 +59,20 @@ func setupBot(app *App) error {
 		xCommand("help",
 			func(b *gotgbot.Bot, ctx *ext.Context) error {
 				return h.Help(app.mux, ctx)
+			}, true),
+		1,
+	)
+	app.updater.Dispatcher.AddHandlerToGroup(
+		xCommand("get",
+			func(b *gotgbot.Bot, ctx *ext.Context) error {
+				return h.Get(app.mux, ctx)
+			}, true),
+		1,
+	)
+	app.updater.Dispatcher.AddHandlerToGroup(
+		xCommand("donate",
+			func(b *gotgbot.Bot, ctx *ext.Context) error {
+				return h.Donate(app.mux, ctx)
 			}, true),
 		1,
 	)

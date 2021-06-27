@@ -1,7 +1,7 @@
 package h
 
 import (
-	"context"
+	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
 	"go.uber.org/zap"
 	"tgbot/internal/mux"
@@ -37,11 +37,8 @@ func LogCommand(s *mux.Sender, ctx *ext.Context) error {
 }
 
 func Start(s *mux.Sender, ctx *ext.Context) error {
-	// let's hope ext.Context will be updated some day..
-	cntxt := context.Background()
-
 	_, err := s.ReplyToMessage(
-		cntxt,
+		s.AppCtx,
 		ctx.EffectiveMessage,
 		s.Resp.Get(tr.CmdStart, tr.GetLang(ctx.EffectiveMessage)),
 		nil,
@@ -54,17 +51,42 @@ func Start(s *mux.Sender, ctx *ext.Context) error {
 }
 
 func Help(s *mux.Sender, ctx *ext.Context) error {
-	// let's hope ext.Context will be updated some day..
-	cntxt := context.Background()
-
 	_, err := s.ReplyToMessage(
-		cntxt,
+		s.AppCtx,
 		ctx.EffectiveMessage,
 		s.Resp.Get(tr.CmdHelp, tr.GetLang(ctx.EffectiveMessage)),
 		nil,
 	)
 	if err != nil {
 		s.Logger.Error("failed to send Help command", zap.Error(err))
+	}
+
+	return ext.EndGroups
+}
+
+func Get(s *mux.Sender, ctx *ext.Context) error {
+	_, err := s.ReplyToMessage(
+		s.AppCtx,
+		ctx.EffectiveMessage,
+		s.Resp.Get(tr.CmdGet, tr.GetLang(ctx.EffectiveMessage)),
+		&gotgbot.SendMessageOpts{ReplyMarkup: gotgbot.ForceReply{ForceReply: true, Selective: true}},
+	)
+	if err != nil {
+		s.Logger.Error("failed to send Get command", zap.Error(err))
+	}
+
+	return ext.EndGroups
+}
+
+func Donate(s *mux.Sender, ctx *ext.Context) error {
+	_, err := s.ReplyToMessage(
+		s.AppCtx,
+		ctx.EffectiveMessage,
+		s.Resp.Get(tr.CmdDonate, tr.GetLang(ctx.EffectiveMessage)),
+		nil,
+	)
+	if err != nil {
+		s.Logger.Error("failed to send Donate command", zap.Error(err))
 	}
 
 	return ext.EndGroups
@@ -87,11 +109,8 @@ func Undefined(s *mux.Sender, ctx *ext.Context) error {
 		return ext.EndGroups
 	}
 
-	// let's hope ext.Context will be updated some day..
-	cntxt := context.Background()
-
 	_, err := s.ReplyToMessage(
-		cntxt,
+		s.AppCtx,
 		ctx.EffectiveMessage,
 		s.Resp.Get(tr.CmdUndefined, tr.GetLang(ctx.EffectiveMessage)),
 		nil,
@@ -104,7 +123,10 @@ func Undefined(s *mux.Sender, ctx *ext.Context) error {
 }
 
 func ProcessURL(s *mux.Sender, ctx *ext.Context) error {
-	scloud.ProcessURL(s, ctx)
+	success := scloud.ProcessURL(s, ctx)
+	if err := s.Stats.Report(ctx.EffectiveMessage, success); err != nil {
+		s.Logger.Error("can't send report", zap.Error(err))
+	}
 	return ext.EndGroups
 }
 
@@ -114,17 +136,18 @@ func Default(s *mux.Sender, ctx *ext.Context) error {
 		return ext.EndGroups
 	}
 
-	// let's hope ext.Context will be updated some day..
-	cntxt := context.Background()
-
 	_, err := s.ReplyToMessage(
-		cntxt,
+		s.AppCtx,
 		ctx.EffectiveMessage,
 		s.Resp.Get(tr.ErrNotURL, tr.GetLang(ctx.EffectiveMessage)),
 		nil,
 	)
 	if err != nil {
 		s.Logger.Error("failed to send Undefined command", zap.Error(err))
+	}
+
+	if err := s.Stats.Report(ctx.EffectiveMessage, false); err != nil {
+		s.Logger.Error("can't send report", zap.Error(err))
 	}
 
 	return ext.EndGroups

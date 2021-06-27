@@ -1,65 +1,99 @@
 [cmd]
-Start = """Hello, user!👋
+Start = """\
+Hello, user!👋
 I'm SoundCloud downloader bot.
 Send me an url from [soundcloud.com] and i will respond with attached audio file
 
-Updates channel: @sc_download_bot_info"""
+Bot works automaticaly in private messages and channels, \
+in groups you need to start process by sending command /get
 
-Help = """Send me an url and i will download it for you.
+Updates channel: @scdl_info\
+"""
+
+Help = """\
+Send me an url and i will download it for you.
 If something went wrong - first make sure url is valid and song available.
-Then try send message again. \
-If error still persist - contact with developer (@Camelva)
+Then try to send message again. \
+If error still persist - feel free to contact me (@Camelva)
 
-= Updates channel: @sc_download_bot_info
+= Updates channel: @scdl_info
 = Currently supported only direct song links from [soundcloud.com]
 
 If you appreciate my work and wish to help - \
-please consider to <a href="https://www.patreon.com/camelva">support me on Patreon</a> \
-or directly with BTC: <code>1EmHYR8kZsuALW2XyVRKYLXNKqZ95hc7YP</code>"""
+please consider to support me. Learn more - /donate\
+"""
 
-Default = """I don't know that command.
-Use /help for additional info"""
+Get = "Okay, now send me url"
+
+Donate = """\
+<i>Every little donation helps me to keep maintaining my projects and improve them.<i>
+
+I have a <a href="https://www.patreon.com/camelva">Patreon</a> page, \
+where most of the payment methods should work.
+For additional payment methods - refer to <a href="https://camelva.pp.ua/donate.html">Website</a>.
+
+If you wish to use anything else - please contact me (@Camelva)\
+"""
+
+Default = """\
+I don't know such command.
+Use /help for additional info\
+"""
 
 [process]
-Start = """Please wait, checking song availability.."""
+Start = "Checking url.."
 
-Queue = """Processing your previous songs.."""
+Fetching = "Fetching song from soundcloud.."
 
-Fetching = """Fetching song from soundcloud.."""
+Uploading = "Everything done. Uploading song to you.."
 
-Uploading = """Everything done. Uploading song to you.."""
+Ready = """[ \
+<a href="{{.cover}}">Cover</a> \
+| \
+<a href="{{.source}}">Source</a> \
+]
 
-Storage = """This file's size is breaking telegram's limit. Trying to upload to external storage.."""
+@scdl_info\
+"""
 
-StorageReady = """Your song is ready. It will be available to download for 10 days:
+Storage = """\
+This file's size is breaking telegram's limit.
+Uploading to external storage..\
+"""
 
-- {{.link}}
+StorageReady = """\
+Your song is ready. It will be available to download for 10 days:
+
+- {{.link}}\
 """
 
 [err]
-NotURL = """I can't find any link in your message. 👀
-If there is some other text - try to remove everything else and send message again"""
+NotURL = """\
+I can't find any link in your message. 👀
+If there is some other text - try to remove everything else and send message again\
+"""
 
-NotSoundCloudURL = """This link does not seem to lead to [soundcloud.com]. 👀
-If there is some other text - try to remove everything else and send message again"""
+NotSoundCloudURL = """\
+This link does not seem to lead to [soundcloud.com]. 👀
+If there is some other text - try to remove everything else and send message again\
+"""
 
-UnsupportedFormat = """I do not know how to work with playlists and other formats yet"""
+UnsupportedFormat = "I don't know how to work with playlists and other formats yet"
 
-UnsupportedService = """This service unsupported yet."""
+UnavailableSong = """\
+Seems like this song is unavailable for bot.
+Most likely its because of regional restrictions and i can't bypass it by now\
+"""
 
-UnavailableSong = """Seems like this song is unavailable for bot.
-Most likely because of regional restrictions and i can't bypass it by now"""
+Internal = """\
+Internal error, please try again later.
 
-SizeLimit = """Looks like this song weighs too much.
-Telegram limits uploading files size to 50mb and we can't avoid this limit."""
+Error: <code>{{.errMessage}}</code>\
+"""
 
-Internal = """Internal error, please try again later.
-Error: <code>{{.errMessage}}</code>"""
-
-Default = """There is some undefined error with this song 🤔.
+Default = """\
+There is some undefined error with this song 🤔.
 Please try again or contact with developer.
 
-Error text: {{.errMessage}}"""
-
-[util]
-GetCover = """Download cover"""
+Error text: {{.errMessage}}\
+"""

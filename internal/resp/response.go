@@ -36,9 +36,15 @@ func GetLang(msg *gotgbot.Message) string {
 
 // Process phrases
 var (
-	ProcessStart        = &i18n.LocalizeConfig{MessageID: "process.Start"}
-	ProcessFetching     = &i18n.LocalizeConfig{MessageID: "process.Fetching"}
-	ProcessUploading    = &i18n.LocalizeConfig{MessageID: "process.Uploading"}
+	ProcessStart     = &i18n.LocalizeConfig{MessageID: "process.Start"}
+	ProcessFetching  = &i18n.LocalizeConfig{MessageID: "process.Fetching"}
+	ProcessUploading = &i18n.LocalizeConfig{MessageID: "process.Uploading"}
+	ProcessReady     = func(cover, source string) *i18n.LocalizeConfig {
+		return &i18n.LocalizeConfig{
+			MessageID:    "process.Ready",
+			TemplateData: map[string]string{"cover": cover, "source": source},
+		}
+	}
 	ProcessStorage      = &i18n.LocalizeConfig{MessageID: "process.Storage"}
 	ProcessStorageReady = func(s string) *i18n.LocalizeConfig {
 		return &i18n.LocalizeConfig{
@@ -52,13 +58,15 @@ var (
 var (
 	CmdStart     = &i18n.LocalizeConfig{MessageID: "cmd.Start"}
 	CmdHelp      = &i18n.LocalizeConfig{MessageID: "cmd.Help"}
+	CmdGet       = &i18n.LocalizeConfig{MessageID: "cmd.Get"}
+	CmdDonate    = &i18n.LocalizeConfig{MessageID: "cmd.Donate"}
 	CmdUndefined = &i18n.LocalizeConfig{MessageID: "cmd.Default"}
 )
 
 // Error messages
 var (
 	ErrNotURL            = &i18n.LocalizeConfig{MessageID: "err.NotURL"}
-	ErrNotSCURL          = &i18n.LocalizeConfig{MessageID: "err.NotSoundCloudURL"}
+	ErrNotSC             = &i18n.LocalizeConfig{MessageID: "err.NotSoundCloudURL"}
 	ErrUnsupportedFormat = &i18n.LocalizeConfig{MessageID: "err.UnsupportedFormat"}
 	ErrUnavailableSong   = &i18n.LocalizeConfig{MessageID: "err.UnavailableSong"}
 	ErrInternal          = func(err error) *i18n.LocalizeConfig {
@@ -73,9 +81,4 @@ var (
 			TemplateData: map[string]string{"errMessage": err.Error()},
 		}
 	}
-)
-
-// Util text
-var (
-	UtilGetCover = &i18n.LocalizeConfig{MessageID: "util.GetCover"}
 )

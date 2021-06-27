@@ -16,16 +16,26 @@ import (
 
 var MaxSize int64 = 50 * 1024 * 1024
 
-func ProcessURL(sender *mux.Sender, ctx *ext.Context) {
+func ProcessURL(sender *mux.Sender, ctx *ext.Context) (success bool) {
 	localLog := sender.Logger.With(zap.Int64("messageID", ctx.EffectiveMessage.MessageId))
 	localLog.Info("checking url..")
 
-	tempMessage, err := sender.ReplyToMessage(
-		context.Background(),
-		ctx.EffectiveMessage,
-		sender.Resp.Get(tr.ProcessStart, tr.GetLang(ctx.EffectiveMessage)),
-		nil,
-	)
+	if len(ctx.EffectiveMessage.Entities) < 1 {
+		// no url, shouldn't ever happen lol
+		localLog.Info("no url here, finishing..")
+		_, _ = sender.Reply(ctx, tr.ErrNotURL, true)
+		return
+	}
+
+	receivedURL := getValidURL(ctx.EffectiveMessage)
+	if receivedURL == "" {
+		// non-valid url
+		localLog.Info("no valid url here, finishing..")
+		_, _ = sender.Reply(ctx, tr.ErrNotURL, true)
+		return
+	}
+
+	tempMessage, err := sender.Reply(ctx, tr.ProcessStart, false)
 	if err != nil {
 		// can't send message after retrying, should stop now
 		localLog.Info("can't send message to user", zap.Error(err))
@@ -36,57 +46,20 @@ func ProcessURL(sender *mux.Sender, ctx *ext.Context) {
 		_, _ = sender.DeleteMessage(context.Background(), tempMessage)
 	}()
 
-	if len(ctx.EffectiveMessage.Entities) < 1 {
-		// no url, shouldn't ever happen lol
-		localLog.Info("no url here, finishing..")
-		_, _ = sender.ReplyToMessage(
-			context.Background(),
-			ctx.EffectiveMessage,
-			sender.Resp.Get(tr.ErrNotURL, tr.GetLang(ctx.EffectiveMessage)),
-			nil,
-		)
-		return
-	}
-
-	receivedURL := getValidURL(ctx.EffectiveMessage)
-	if receivedURL == "" {
-		// non-valid url
-		localLog.Info("no valid url here, finishing..")
-
-		// dont send error outside of private chat
-		if ctx.EffectiveChat.Type == "private" {
-			_, _ = sender.ReplyToMessage(
-				context.Background(),
-				ctx.EffectiveMessage,
-				sender.Resp.Get(tr.ErrNotURL, tr.GetLang(ctx.EffectiveMessage)),
-				nil,
-			)
-		}
-		return
-	}
-
 	urlInfo := soundcloader.Parse(receivedURL)
 	if urlInfo == nil {
 		// not SoundCloud url
 		localLog.Info("no valid SoundCloud url here, finishing..")
-
-		// dont send error outside of private chat
-		if ctx.EffectiveChat.Type == "private" {
-			_, _ = sender.ReplyToMessage(
-				context.Background(),
-				ctx.EffectiveMessage,
-				sender.Resp.Get(tr.ErrNotSCURL, tr.GetLang(ctx.EffectiveMessage)),
-				nil,
-			)
-		}
+		_, _ = sender.Reply(ctx, tr.ErrNotSC, true)
 		return
 	}
 
-	fetchSong(sender, ctx, urlInfo, tempMessage)
-	return
+	return fetchSong(sender, ctx, urlInfo, tempMessage)
 }
 
-func fetchSong(sender *mux.Sender, ctx *ext.Context, urlInfo *soundcloader.URLInfo, tempMessage *gotgbot.Message) {
+func fetchSong(sender *mux.Sender, ctx *ext.Context,
+	urlInfo *soundcloader.URLInfo, tempMessage *gotgbot.Message,
+) (success bool) {
 	localLog := sender.Logger.With(
 		zap.Int64("messageID", ctx.EffectiveMessage.MessageId),
 		zap.String("url", urlInfo.String()),
@@ -95,12 +68,8 @@ func fetchSong(sender *mux.Sender, ctx *ext.Context, urlInfo *soundcloader.URLIn
 	var err error
 
 	// tell user we start fetching song
-	tempMessage, err = sender.EditMessage(
-		context.Background(),
-		tempMessage,
-		sender.Resp.Get(tr.ProcessFetching, tr.GetLang(ctx.EffectiveMessage)),
-		nil,
-	)
+	tempMessage, err = sender.EditMessage(sender.AppCtx, tempMessage,
+		sender.Resp.Get(tr.ProcessFetching, tr.GetLang(ctx.EffectiveMessage)), nil)
 	if err != nil {
 		// can't send message after retrying, should stop now
 		localLog.Info("can't send message to user", zap.Error(err))
@@ -119,21 +88,12 @@ func fetchSong(sender *mux.Sender, ctx *ext.Context, urlInfo *soundcloader.URLIn
 	if err != nil {
 		if err == soundcloader.NotSong {
 			localLog.Info("not song url, exiting..")
-			_, _ = sender.ReplyToMessage(
-				context.Background(),
-				ctx.EffectiveMessage,
-				sender.Resp.Get(tr.ErrUnsupportedFormat, tr.GetLang(ctx.EffectiveMessage)),
-				nil,
-			)
+			_, _ = sender.Reply(ctx, tr.ErrUnsupportedFormat, false)
 			return
 		}
+
 		localLog.Error("undefined error while fetching song info, exiting..", zap.Error(err))
-		_, _ = sender.ReplyToMessage(
-			context.Background(),
-			ctx.EffectiveMessage,
-			sender.Resp.Get(tr.ErrUndefined(err), tr.GetLang(ctx.EffectiveMessage)),
-			nil,
-		)
+		_, _ = sender.Reply(ctx, tr.ErrUndefined(err), false)
 		return
 	}
 
@@ -141,83 +101,51 @@ func fetchSong(sender *mux.Sender, ctx *ext.Context, urlInfo *soundcloader.URLIn
 	if err != nil {
 		if err == soundcloader.EmptyStream {
 			localLog.Info("song unavailable, exiting..")
-			_, _ = sender.ReplyToMessage(
-				context.Background(),
-				ctx.EffectiveMessage,
-				sender.Resp.Get(tr.ErrUnavailableSong, tr.GetLang(ctx.EffectiveMessage)),
-				nil,
-			)
+			_, _ = sender.Reply(ctx, tr.ErrUnavailableSong, false)
 			return
 		}
+
 		localLog.Error("undefined error while downloading song, exiting..", zap.Error(err))
-		_, _ = sender.ReplyToMessage(
-			context.Background(),
-			ctx.EffectiveMessage,
-			sender.Resp.Get(tr.ErrUndefined(err), tr.GetLang(ctx.EffectiveMessage)),
-			nil,
-		)
+		_, _ = sender.Reply(ctx, tr.ErrUndefined(err), false)
 		return
 	}
 
 	songStats, err := os.Stat(location)
 	if err != nil {
-		// shouldn't ever happen, but means file isn't available, can't continue
+		// shouldn't ever happen, but means file isn't available, so we can't continue
 		localLog.Info("can't access file, exiting..")
-		_, _ = sender.ReplyToMessage(
-			context.Background(),
-			ctx.EffectiveMessage,
-			sender.Resp.Get(tr.ErrInternal(fmt.Errorf("can't read file")), tr.GetLang(ctx.EffectiveMessage)),
-			nil,
-		)
+		_, _ = sender.Reply(ctx, tr.ErrInternal(fmt.Errorf("can't read file")), false)
 		return
 	}
 
 	if songStats.Size() > MaxSize {
 		// oversize, can't send via telegram
 		localLog.Info("size limit, uploading to external storage..")
-		_, _ = sender.EditMessage(
-			context.Background(),
-			tempMessage,
-			sender.Resp.Get(tr.ProcessStorage, tr.GetLang(ctx.EffectiveMessage)),
-			nil,
-		)
+		_, _ = sender.EditMessage(sender.AppCtx, tempMessage,
+			sender.Resp.Get(tr.ProcessStorage, tr.GetLang(ctx.EffectiveMessage)), nil)
 
 		link, err := sender.External.Upload(location)
 		if err != nil {
-			_, _ = sender.ReplyToMessage(
-				context.Background(),
-				ctx.EffectiveMessage,
-				sender.Resp.Get(tr.ErrInternal(err), tr.GetLang(ctx.EffectiveMessage)),
-				nil,
-			)
-		} else {
-			_, _ = sender.ReplyToMessage(
-				context.Background(),
-				ctx.EffectiveMessage,
-				sender.Resp.Get(tr.ProcessStorageReady(link), tr.GetLang(ctx.EffectiveMessage)),
-				nil,
-			)
+			_, _ = sender.Reply(ctx, tr.ErrInternal(err), false)
+			return
 		}
 
-		return
+		_, _ = sender.Reply(ctx, tr.ProcessStorageReady(link), false)
+		return true
 	}
 
-	if _, err = sender.EditMessage(
-		context.Background(),
-		tempMessage,
-		sender.Resp.Get(tr.ProcessUploading, tr.GetLang(ctx.EffectiveMessage)),
-		nil,
-	); err != nil {
+	tempMessage, err = sender.EditMessage(context.Background(), tempMessage,
+		sender.Resp.Get(tr.ProcessUploading, tr.GetLang(ctx.EffectiveMessage)), nil)
+	if err != nil {
 		// can't edit message after retrying, should stop now
 		localLog.Info("can't edit temp message", zap.Error(err))
 		return
 	}
 
-	uploadSong(sender, ctx, song, location)
-	return
+	return uploadSong(sender, ctx, song, location)
 }
 
-func uploadSong(sender *mux.Sender, ctx *ext.Context, songInfo *soundcloader.Song, location string) {
+func uploadSong(sender *mux.Sender, ctx *ext.Context, songInfo *soundcloader.Song, location string) (success bool) {
 	localLog := sender.Logger.With(zap.Int64("messageID", ctx.EffectiveMessage.MessageId))
 	localLog.Info("fetched song, uploading to user..")
 
@@ -225,40 +153,31 @@ func uploadSong(sender *mux.Sender, ctx *ext.Context, songInfo *soundcloader.Son
 	if e != nil {
 		localLog.Error("can't open song file", zap.Error(e))
 
-		_, _ = sender.ReplyToMessage(
-			context.Background(),
-			ctx.EffectiveMessage,
-			sender.Resp.Get(tr.ErrInternal(fmt.Errorf("can't open file")), tr.GetLang(ctx.EffectiveMessage)),
-			nil,
-		)
+		_, _ = sender.Reply(ctx, tr.ErrInternal(fmt.Errorf("can't open file")), false)
 		return
 	}
 	defer func() {
 		_ = f.Close()
 	}()
 
-	songCaption := fmt.Sprintf(
-		"<a href=\"%s\">%s</a>\n\n@scdl_info",
+	songCaption := sender.Resp.Get(tr.ProcessReady(
 		songInfo.Thumbnail,
-		sender.Resp.Get(tr.UtilGetCover, tr.GetLang(ctx.EffectiveMessage)),
-	)
+		songInfo.Permalink,
+		//fmt.Sprintf("https://youtu.be/%s", video.ID),
+	), tr.GetLang(ctx.EffectiveMessage))
 
-	if _, err := sender.SendAudio(
-		context.Background(),
-		ctx.EffectiveChat.Id,
-		f,
+	if _, err := sender.SendAudio(sender.AppCtx, ctx.EffectiveChat.Id, f,
 		&gotgbot.SendAudioOpts{
-			Caption:          songCaption,
-			ParseMode:        "HTML",
-			Duration:         int64(songInfo.Duration.Seconds()),
-			Performer:        songInfo.Author,
-			Title:            songInfo.Title,
-			Thumb:            songInfo.Thumbnail,
 			ReplyToMessageId: ctx.EffectiveMessage.MessageId,
+			Caption:          songCaption,
+			Title:            songInfo.Title,
+			Performer:        songInfo.Author,
+			Duration:         int64(songInfo.Duration.Seconds()),
+			Thumb:            songInfo.Thumbnail,
 		},
 	); err != nil {
 		localLog.Error("can't send song to user", zap.Error(e))
 	}
 
-	return
+	return true
 }

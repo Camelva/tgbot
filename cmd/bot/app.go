@@ -31,7 +31,7 @@ type App struct {
 	logFile string
 }
 
-func InitApp(logger *zap.Logger, logFile string) (*App, error) {
+func InitApp(ctx context.Context, logger *zap.Logger, logFile string) (*App, error) {
 	token := os.Getenv("BOT_TOKEN")
 	if token == "" {
 		return nil, xerrors.New("no BOT_TOKEN provided")
@@ -43,7 +43,7 @@ func InitApp(logger *zap.Logger, logFile string) (*App, error) {
 	}
 
 	telemetryServer := os.Getenv("TELEMETRY_SERVER")
-	t := telemetry.New(telemetryServer)
+	t := telemetry.New(telemetryServer, "scbot")
 
 	b, err := gotgbot.NewBot(token, &gotgbot.BotOpts{
 		Client:      http.Client{},
@@ -64,7 +64,18 @@ func InitApp(logger *zap.Logger, logFile string) (*App, error) {
 
 	resp := tr.New(filepath.Join("internal", "resp"))
 
-	sender := mux.New(b, t, external, resp, logger, logFile)
+	muxOpts := mux.Options{
+		Bot:             b,
+		AppContext:      ctx,
+		MaxRetries:      5,
+		ParseMode:       "HTML",
+		Translation:     resp,
+		ExternalStorage: external,
+		Telemetry:       t,
+		Logger:          logger,
+		LogFile:         logFile,
+	}
+	sender := mux.New(muxOpts)
 
 	app := &App{
 		client:          b,
@@ -81,7 +92,7 @@ func InitApp(logger *zap.Logger, logFile string) (*App, error) {
 }
 
 func (a *App) Close() error {
-	a.logger.Sugar().Info("closing..")
+	a.logger.Info("closing..")
 	if err := a.mux.ReportLogs(); err != nil {
 		a.logger.Error("can't send logs to owner: %w", zap.Error(err))
 	}

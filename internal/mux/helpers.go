@@ -3,10 +3,29 @@ package mux
 import (
 	"context"
 	"github.com/PaulSonOfLars/gotgbot/v2"
+	"github.com/PaulSonOfLars/gotgbot/v2/ext"
 	"github.com/cenkalti/backoff/v4"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"go.uber.org/zap"
 	"os"
+	tr "tgbot/internal/resp"
 )
+
+func (s *Sender) Reply(ctx *ext.Context, r *i18n.LocalizeConfig, private bool) (*gotgbot.Message, error) {
+	if private {
+		// exiting silently if not private chat
+		if ctx.EffectiveChat.Type != "private" {
+			return nil, nil
+		}
+	}
+
+	return s.ReplyToMessage(
+		s.AppCtx,
+		ctx.EffectiveMessage,
+		s.Resp.Get(r, tr.GetLang(ctx.EffectiveMessage)),
+		nil,
+	)
+}
 
 func (s *Sender) SendMessage(
 	ctx context.Context,

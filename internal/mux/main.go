@@ -16,6 +16,8 @@ type Sender struct {
 	Client  *gotgbot.Bot
 	OwnerID int64
 
+	AppCtx context.Context
+
 	LogRetry func(error, time.Duration)
 
 	MaxRetries uint64
@@ -29,25 +31,64 @@ type Sender struct {
 	LogFile string
 }
 
-func New(
-	b *gotgbot.Bot,
-	t *telemetry.Client,
-	eStorage *storage.Storage,
-	resp *tr.Translation,
-	l *zap.Logger,
-	logFile string,
-) *Sender {
-	s := &Sender{
-		Client:     b,
-		ParseMode:  "HTML",
-		MaxRetries: 7,
-		External:   eStorage,
-		Resp:       resp,
-		Stats:      t,
-		Logger:     l,
-		LogFile:    logFile,
+type Options struct {
+	Bot     *gotgbot.Bot
+	OwnerID int64
+
+	AppContext context.Context
+
+	LogRetry func(error, time.Duration)
+
+	MaxRetries uint64
+	ParseMode  string
+
+	Translation     *tr.Translation
+	ExternalStorage *storage.Storage
+
+	Telemetry *telemetry.Client
+	Logger    *zap.Logger
+	LogFile   string
+}
+
+func New(opts Options) *Sender {
+	if opts.Bot == nil || opts.Translation == nil ||
+		opts.ExternalStorage == nil || opts.Telemetry == nil {
+		return nil
 	}
-	s.LogRetry = DefaultLogRetry(s)
+
+	if opts.MaxRetries == 0 {
+		opts.MaxRetries = 7
+	}
+
+	if opts.ParseMode == "" {
+		opts.ParseMode = "HTML"
+	}
+
+	if opts.Logger == nil {
+		opts.Logger = zap.NewNop()
+	}
+
+	if opts.OwnerID == 0 {
+		opts.OwnerID = GetOwner()
+	}
+
+	s := &Sender{
+		Client:     opts.Bot,
+		AppCtx:     opts.AppContext,
+		ParseMode:  opts.ParseMode,
+		MaxRetries: opts.MaxRetries,
+		External:   opts.ExternalStorage,
+		Resp:       opts.Translation,
+		Stats:      opts.Telemetry,
+		Logger:     opts.Logger,
+		LogFile:    opts.LogFile,
+	}
+
+	if opts.LogRetry == nil {
+		opts.LogRetry = DefaultLogRetry(s)
+	}
+
+	s.LogRetry = opts.LogRetry
 	return s
 }
 

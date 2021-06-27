@@ -11,10 +11,11 @@ import (
 
 type Client struct {
 	server string
+	bot    string
 }
 
-func New(server string) *Client {
-	return &Client{server: server}
+func New(server, bot string) *Client {
+	return &Client{server, bot}
 }
 
 func (c *Client) Report(msg *gotgbot.Message, success bool) error {
@@ -32,6 +33,7 @@ func (c *Client) Report(msg *gotgbot.Message, success bool) error {
 		Text:    msg.Text,
 		Date:    msg.Date,
 		Success: success,
+		BotName: c.bot,
 	}
 
 	r := Report{
@@ -91,7 +93,9 @@ func (c *Client) sendReport(r Report) error {
 	if err != nil {
 		return xerrors.Errorf("can't read response: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	serverResp := new(ServerResponse)
 	if err := json.Unmarshal(respBody, serverResp); err != nil {
@@ -115,6 +119,7 @@ type Message struct {
 	Text    string `json:"text"`
 	Date    int64  `json:"date"`
 	Success bool   `json:"success"`
+	BotName string `json:"bot_name"`
 }
 
 type User struct {

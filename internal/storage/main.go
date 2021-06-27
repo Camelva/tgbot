@@ -31,7 +31,9 @@ func (s *Storage) getAvailableServer() string {
 		s.logger.Error("server unavailable", zap.Error(err))
 		return ""
 	}
-	defer res.Body.Close()
+	defer func() {
+		_ = res.Body.Close()
+	}()
 
 	respData, err := io.ReadAll(res.Body)
 	if err != nil {
@@ -99,7 +101,9 @@ func (s *Storage) Upload(fileLocation string) (string, error) {
 		s.logger.Error("can't send request", zap.Error(err))
 		return "", fmt.Errorf("can't send request")
 	}
-	defer res.Body.Close()
+	defer func() {
+		_ = res.Body.Close()
+	}()
 
 	respData, err := io.ReadAll(res.Body)
 	if err != nil {
